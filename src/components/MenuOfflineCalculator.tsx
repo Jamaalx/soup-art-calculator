@@ -1,92 +1,98 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-
-interface Product {
-  nume: string;
-  pret: number;
-}
+import { CIORBE, FEL_PRINCIPAL, GARNITURI } from '@/lib/data/products';
+import { calculateOfflineMenu } from '@/lib/calculations/menuOffline';
+import { calculateStatistics } from '@/lib/calculations/statistics';
+import { MENU_COSTS } from '@/lib/data/constants';
+import { Product } from '@/types';
 
 interface Simulation {
   ciorba: string;
   felPrincipal: string;
   garnitura: string;
+  costProduse: number;
+  costAmbalaj: number;
+  comision: number;
   costTotal: number;
   profit: number;
   marjaProfit: number;
+  pretIndividual: number;
+  economie: number;
 }
 
-const MenuCalculator = () => {
-  const [pretVanzare, setPretVanzare] = useState<number>(35);
+const MenuOfflineCalculator = () => {
+  const [pretVanzare, setPretVanzare] = useState<number>(45);
 
-  const ciorbe: Product[] = [
-    { nume: "Gulas de vita", pret: 14.42 },
-    { nume: "Ciorba de burta", pret: 13.06 },
-    { nume: "Ciorba radauteana", pret: 11.41 },
-    { nume: "Ciorba de vacuta", pret: 14.36 },
-    { nume: "Bors de pui", pret: 7.84 },
-    { nume: "Ciorba de fasole cu afumatura", pret: 9.83 },
-    { nume: "Ciorba de perisoare", pret: 8.52 },
-    { nume: "Ciorba de legume", pret: 6.06 },
-    { nume: "Supa crema de ciuperci", pret: 9.65 },
-    { nume: "Supa crema de legume", pret: 8.00 },
-    { nume: "Supa crema de linte", pret: 7.36 }
-  ];
+  // Selected products (checkboxes)
+  const [selectedCiorbe, setSelectedCiorbe] = useState<Set<string>>(new Set(CIORBE.map(c => c.id)));
+  const [selectedFeluri, setSelectedFeluri] = useState<Set<string>>(new Set(FEL_PRINCIPAL.map(f => f.id)));
+  const [selectedGarnituri, setSelectedGarnituri] = useState<Set<string>>(new Set(GARNITURI.map(g => g.id)));
 
-  const felPrincipal: Product[] = [
-    { nume: "Sarmale cu afumatura", pret: 9.03 },
-    { nume: "Tochitura moldoveneasca", pret: 9.00 },
-    { nume: "Cod Pane", pret: 6.15 },
-    { nume: "Snitel de pui", pret: 5.08 },
-    { nume: "Cascaval pane", pret: 6.82 },
-    { nume: "Crispy Strips", pret: 9.51 },
-    { nume: "Mazare cu pui", pret: 5.23 },
-    { nume: "Tocanita de vita", pret: 15.12 },
-    { nume: "Carnati la cuptor", pret: 8.44 },
-    { nume: "Parjoale de curcan in sos", pret: 7.09 },
-    { nume: "Pulpe de pui coapte in sos", pret: 7.09 },
-    { nume: "Ceafa de porc", pret: 11.01 }
-  ];
-
-  const garnituri: Product[] = [
-    { nume: "Cartofi gratinati la cuptor", pret: 6.92 },
-    { nume: "Varza murata calita", pret: 5.17 },
-    { nume: "Mamaliga", pret: 4.25 },
-    { nume: "Piure de cartofi", pret: 6.91 },
-    { nume: "Cartofi copti cu unt si marar", pret: 6.92 },
-    { nume: "Muraturi asortate", pret: 4.27 },
-    { nume: "Salata de varza si morcov", pret: 4.27 },
-    { nume: "Salata de ardei copti", pret: 6.47 },
-    { nume: "Salata de vinete", pret: 6.47 },
-    { nume: "Salata de boeuf", pret: 6.47 }
-  ];
-
-  const COSTURI_FIXE = 3.0;
+  // Filter selected products
+  const ciorbeActive = CIORBE.filter(c => selectedCiorbe.has(c.id));
+  const feluriActive = FEL_PRINCIPAL.filter(f => selectedFeluri.has(f.id));
+  const garnituriActive = GARNITURI.filter(g => selectedGarnituri.has(g.id));
 
   const simulari = useMemo<Simulation[]>(() => {
     const result: Simulation[] = [];
     
-    ciorbe.forEach(ciorba => {
-      felPrincipal.forEach(fel => {
-        garnituri.forEach(garnitura => {
-          const costTotal = ciorba.pret + fel.pret + garnitura.pret + COSTURI_FIXE;
-          const profit = pretVanzare - costTotal;
-          const marjaProfit = (profit / costTotal) * 100;
+    ciorbeActive.forEach(ciorba => {
+      feluriActive.forEach(fel => {
+        garnituriActive.forEach(garnitura => {
+          const products = [ciorba, fel, garnitura];
+          const calc = calculateOfflineMenu(pretVanzare, products);
           
           result.push({
             ciorba: ciorba.nume,
             felPrincipal: fel.nume,
             garnitura: garnitura.nume,
-            costTotal,
-            profit,
-            marjaProfit
+            costProduse: calc.costProduse,
+            costAmbalaj: calc.costAmbalaj,
+            comision: calc.comision,
+            costTotal: calc.costTotal,
+            profit: calc.profit,
+            marjaProfit: calc.marjaProfit,
+            pretIndividual: calc.pretIndividual,
+            economie: calc.economie
           });
         });
       });
     });
     
     return result;
-  }, [pretVanzare, ciorbe, felPrincipal, garnituri]);
+  }, [pretVanzare, ciorbeActive, feluriActive, garnituriActive]);
+
+  const toggleProduct = (category: 'ciorbe' | 'feluri' | 'garnituri', id: string) => {
+    if (category === 'ciorbe') {
+      const newSet = new Set(selectedCiorbe);
+      if (newSet.has(id)) newSet.delete(id);
+      else newSet.add(id);
+      setSelectedCiorbe(newSet);
+    } else if (category === 'feluri') {
+      const newSet = new Set(selectedFeluri);
+      if (newSet.has(id)) newSet.delete(id);
+      else newSet.add(id);
+      setSelectedFeluri(newSet);
+    } else {
+      const newSet = new Set(selectedGarnituri);
+      if (newSet.has(id)) newSet.delete(id);
+      else newSet.add(id);
+      setSelectedGarnituri(newSet);
+    }
+  };
+
+  const selectAll = (category: 'ciorbe' | 'feluri' | 'garnituri') => {
+    if (category === 'ciorbe') setSelectedCiorbe(new Set(CIORBE.map(c => c.id)));
+    else if (category === 'feluri') setSelectedFeluri(new Set(FEL_PRINCIPAL.map(f => f.id)));
+    else setSelectedGarnituri(new Set(GARNITURI.map(g => g.id)));
+  };
+
+  const deselectAll = (category: 'ciorbe' | 'feluri' | 'garnituri') => {
+    if (category === 'ciorbe') setSelectedCiorbe(new Set());
+    else if (category === 'feluri') setSelectedFeluri(new Set());
+    else setSelectedGarnituri(new Set());
+  };
 
   const stats = useMemo(() => {
     const costuri = simulari.map(s => s.costTotal);
@@ -123,15 +129,21 @@ const MenuCalculator = () => {
           key={idx}
           className={`flex justify-between p-3 ${colorClass} rounded-xl border hover:shadow-md transition-shadow`}
         >
-          <span className="text-sm font-medium text-gray-800">{item.nume}</span>
-          <span className="text-sm font-bold text-gray-900">{item.pret.toFixed(2)} lei</span>
+          <div>
+            <span className="text-sm font-medium text-gray-800">{item.nume}</span>
+            <span className="text-xs text-gray-600 block">{item.cantitate}</span>
+          </div>
+          <div className="text-right">
+            <span className="text-sm font-bold text-gray-900 block">{item.pretCost.toFixed(2)} lei</span>
+            <span className="text-xs text-gray-600">cost</span>
+          </div>
         </div>
       ))}
     </div>
   );
 
   return (
-    <div className="min-h-screen p-4 md:p-8 bg-gradient-to-br from-[#BBDCFF] via-white to-[#9eff55]">
+    <div className="min-h-screen p-4 md:p-8 bg-gradient-to-br from-[#9eff55] via-white to-[#FFC857]">
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
         
@@ -152,15 +164,16 @@ const MenuCalculator = () => {
         <div className="bg-white rounded-3xl shadow-2xl p-8 mb-6 border-4 border-black">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div>
-              <span className="inline-block px-4 py-2 bg-[#FFC857] rounded-full text-black text-sm font-bold mb-3 border-2 border-black">
-                📊 CALCULATOR PROFESIONAL
+              <span className="inline-block px-4 py-2 bg-[#9eff55] rounded-full text-black text-sm font-bold mb-3 border-2 border-black">
+                🏪 CALCULATOR PROFESIONAL - MENIU OFFLINE
               </span>
-              <h1 className="text-4xl md:text-5xl font-black text-black mb-2 tracking-tight">PREȚ MENIU ZILEI</h1>
-              <p className="text-gray-700 font-semibold">Optimizare prețuri pentru <strong>Clientii ZED-ZEN</strong></p>
+              <h1 className="text-4xl md:text-5xl font-black text-black mb-2 tracking-tight">PREȚ MENIU ÎN LOCAȚIE</h1>
+              <p className="text-gray-700 font-semibold">Optimizare prețuri pentru <strong>Vânzare în Restaurant</strong></p>
+              <p className="text-sm text-gray-600 mt-2">Fără ambalaj • Fără comision • Profit direct</p>
             </div>
             <div className="px-6 py-3 bg-black rounded-2xl text-white border-4 border-black">
-              <p className="text-xs font-bold opacity-90">CLIENT</p>
-              <p className="text-xl font-black">CLIENTII ZED-ZEN</p>
+              <p className="text-xs font-bold opacity-90">LOCAȚIE</p>
+              <p className="text-xl font-black">IN-RESTAURANT</p>
             </div>
           </div>
         </div>
@@ -169,33 +182,33 @@ const MenuCalculator = () => {
         <div className="bg-white rounded-3xl shadow-2xl p-8 mb-6 border-4 border-black">
           <div className="text-center mb-6">
             <h2 className="text-2xl font-black mb-4 text-black tracking-tight">SETEAZĂ PREȚUL DE VÂNZARE</h2>
-            <div className="inline-block px-8 py-6 bg-[#BBDCFF] rounded-3xl shadow-xl mb-4 border-4 border-black">
+            <div className="inline-block px-8 py-6 bg-[#9eff55] rounded-3xl shadow-xl mb-4 border-4 border-black">
               <p className="text-black text-sm font-bold opacity-90">PREȚ PER MENIU</p>
               <p className="text-black text-5xl font-black">{pretVanzare.toFixed(2)} <span className="text-3xl">LEI</span></p>
             </div>
           </div>
           <input 
             type="range" 
-            min="20" 
-            max="50" 
-            step="0.5" 
+            min={MENU_COSTS.OFFLINE.MIN_PRICE}
+            max={MENU_COSTS.OFFLINE.MAX_PRICE}
+            step={MENU_COSTS.OFFLINE.STEP}
             value={pretVanzare} 
             onChange={(e) => setPretVanzare(parseFloat(e.target.value))}
-            className="w-full h-4 bg-[#9eff55] rounded-lg cursor-pointer border-2 border-black"
+            className="w-full h-4 bg-[#FFC857] rounded-lg cursor-pointer border-2 border-black"
             style={{
-              accentColor: '#9eff55'
+              accentColor: '#FFC857'
             }}
           />
           <div className="flex justify-between text-sm font-bold text-black mt-2">
-            <span>20 LEI</span>
-            <span>50 LEI</span>
+            <span>{MENU_COSTS.OFFLINE.MIN_PRICE} LEI</span>
+            <span>{MENU_COSTS.OFFLINE.MAX_PRICE} LEI</span>
           </div>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           {[
-            { icon: '📦', label: 'COMBINAȚII', value: simulari.length.toLocaleString(), sub: `${ciorbe.length}×${felPrincipal.length}×${garnituri.length}`, color: '#FFC857' },
+            { icon: '📦', label: 'COMBINAȚII', value: simulari.length.toLocaleString(), sub: `${CIORBE.length}×${FEL_PRINCIPAL.length}×${GARNITURI.length}`, color: '#FFC857' },
             { icon: '📈', label: 'MARJĂ MEDIE', value: `${stats.marjaMedie.toFixed(1)}%`, sub: `${stats.marjaMin.toFixed(0)}%-${stats.marjaMax.toFixed(0)}%`, color: '#9eff55' },
             { icon: '💰', label: 'PROFIT MEDIU', value: `${stats.profitMediu.toFixed(2)}`, sub: 'LEI PER MENIU', color: '#BBDCFF' },
             { icon: '✅', label: 'PROFITABILE', value: stats.profitabile, sub: `${((stats.profitabile/simulari.length)*100).toFixed(1)}%`, color: '#EBEBEB' }
@@ -215,31 +228,31 @@ const MenuCalculator = () => {
         <div className="bg-white rounded-3xl shadow-2xl p-8 mb-6 border-4 border-black">
           <div className="text-center mb-6">
             <h2 className="text-3xl font-black mb-2 text-black tracking-tight">📋 PRODUSE DISPONIBILE</h2>
-            <p className="text-gray-700 font-semibold">Toate produsele incluse în calculul prețurilor</p>
+            <p className="text-gray-700 font-semibold">Costuri pentru vânzare în locație (fără ambalaj, fără comision)</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <div className="flex items-center gap-3 mb-4 bg-[#FFC857] p-3 rounded-xl border-2 border-black">
                 <div className="text-3xl">🍲</div>
-                <h3 className="text-lg font-black text-black">CIORBE ({ciorbe.length})</h3>
+                <h3 className="text-lg font-black text-black">CIORBE ({CIORBE.length})</h3>
               </div>
-              <ProductList products={ciorbe} colorClass="bg-[#FFC857]/30 border-[#FFC857]" />
+              <ProductList products={CIORBE} colorClass="bg-[#FFC857]/30 border-[#FFC857]" />
             </div>
 
             <div>
               <div className="flex items-center gap-3 mb-4 bg-[#BBDCFF] p-3 rounded-xl border-2 border-black">
                 <div className="text-3xl">🍖</div>
-                <h3 className="text-lg font-black text-black">FELURI PRINCIPALE ({felPrincipal.length})</h3>
+                <h3 className="text-lg font-black text-black">FELURI PRINCIPALE ({FEL_PRINCIPAL.length})</h3>
               </div>
-              <ProductList products={felPrincipal} colorClass="bg-[#BBDCFF]/30 border-[#BBDCFF]" />
+              <ProductList products={FEL_PRINCIPAL} colorClass="bg-[#BBDCFF]/30 border-[#BBDCFF]" />
             </div>
 
             <div>
               <div className="flex items-center gap-3 mb-4 bg-[#9eff55] p-3 rounded-xl border-2 border-black">
                 <div className="text-3xl">🥔</div>
-                <h3 className="text-lg font-black text-black">GARNITURI ({garnituri.length})</h3>
+                <h3 className="text-lg font-black text-black">GARNITURI ({GARNITURI.length})</h3>
               </div>
-              <ProductList products={garnituri} colorClass="bg-[#9eff55]/30 border-[#9eff55]" />
+              <ProductList products={GARNITURI} colorClass="bg-[#9eff55]/30 border-[#9eff55]" />
             </div>
           </div>
         </div>
@@ -260,8 +273,9 @@ const MenuCalculator = () => {
                 </div>
               ))}
             </div>
-            <div className="mt-4 p-4 bg-[#EBEBEB] border-2 border-black rounded-2xl">
-              <p className="text-sm font-bold text-black">📦 Costuri fixe: Ambalaj (2 lei) + Transport (1 lei) = 3 lei/meniu</p>
+            <div className="mt-4 p-4 bg-[#9eff55] border-2 border-black rounded-2xl">
+              <p className="text-sm font-bold text-black">✅ Fără costuri suplimentare!</p>
+              <p className="text-sm font-bold text-black">💰 Profit = Preț - Costuri Produse</p>
             </div>
           </div>
 
@@ -338,13 +352,13 @@ const MenuCalculator = () => {
         </div>
 
         {/* Recommendations */}
-        <div className="bg-[#BBDCFF] rounded-3xl shadow-2xl p-8 border-4 border-black mb-6">
-          <h3 className="text-3xl font-black text-center mb-6 text-black tracking-tight">💡 RECOMANDĂRI PRICING</h3>
+        <div className="bg-[#9eff55] rounded-3xl shadow-2xl p-8 border-4 border-black mb-6">
+          <h3 className="text-3xl font-black text-center mb-6 text-black tracking-tight">💡 RECOMANDĂRI PRICING OFFLINE</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             {[
-              { label: '🛡️ CONSERVATOR', price: stats.costMediu * 2.2, desc: 'MARJĂ ~120%', highlight: false, color: '#FFC857' },
-              { label: '⭐ OPTIM', price: stats.costMediu * 2, desc: 'MARJĂ ~100%', highlight: true, color: '#9eff55' },
-              { label: '🎯 COMPETITIV', price: stats.costMediu * 1.8, desc: 'MARJĂ ~80%', highlight: false, color: '#EBEBEB' }
+              { label: '🛡️ CONSERVATOR', price: stats.costMediu * 2.5, desc: 'MARJĂ ~150%', highlight: false, color: '#FFC857' },
+              { label: '⭐ OPTIM', price: stats.costMediu * 2.2, desc: 'MARJĂ ~120%', highlight: true, color: '#9eff55' },
+              { label: '🎯 COMPETITIV', price: stats.costMediu * 2, desc: 'MARJĂ ~100%', highlight: false, color: '#EBEBEB' }
             ].map((rec, i) => (
               <div 
                 key={i} 
@@ -367,12 +381,43 @@ const MenuCalculator = () => {
           <div className="bg-white rounded-2xl p-4 text-center text-sm font-bold text-black border-2 border-black">
             La <strong>{pretVanzare.toFixed(2)} LEI</strong>, ai marjă medie <strong>{stats.marjaMedie.toFixed(1)}%</strong> și{' '}
             <strong>{((stats.profitabile/simulari.length)*100).toFixed(1)}%</strong> meniuri profitabile.
-            {stats.marjaMedie < 80 && (
-              <><br/><br/>⚠️ Marja sub 80%. Consideră creșterea prețului!</>
+            {stats.marjaMedie < 100 && (
+              <><br/><br/>⚠️ Marjă sub 100%. Consideră creșterea prețului!</>
             )}
-            {stats.marjaMedie >= 100 && (
-              <><br/><br/>✅ MARJĂ EXCELENTĂ!</>
+            {stats.marjaMedie >= 150 && (
+              <><br/><br/>✅ MARJĂ EXCELENTĂ PENTRU LOCAȚIE!</>
             )}
+          </div>
+        </div>
+
+        {/* Comparison with Online */}
+        <div className="bg-[#BBDCFF] rounded-3xl shadow-2xl p-8 border-4 border-black mb-6">
+          <h3 className="text-3xl font-black text-center mb-6 text-black tracking-tight">⚖️ COMPARAȚIE: OFFLINE vs ONLINE</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white rounded-2xl p-6 border-4 border-black">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-xl font-black text-black">🏪 OFFLINE (Restaurant)</h4>
+                <span className="px-3 py-1 bg-[#9eff55] rounded-full text-xs font-black border-2 border-black">ACTUAL</span>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-bold text-black">✅ Fără ambalaj: 0 LEI</p>
+                <p className="text-sm font-bold text-black">✅ Fără comision: 0%</p>
+                <p className="text-sm font-bold text-black">💰 Profit: 100% al tău</p>
+                <p className="text-sm font-bold text-black">⚡ Marjă mai mare</p>
+              </div>
+            </div>
+            <div className="bg-white rounded-2xl p-6 border-4 border-black">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-xl font-black text-black">🚚 ONLINE (Delivery)</h4>
+                <span className="px-3 py-1 bg-[#FFC857] rounded-full text-xs font-black border-2 border-black">COMPARAȚIE</span>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-bold text-black">📦 Ambalaj: 3 LEI/meniu</p>
+                <p className="text-sm font-bold text-black">💳 Comision: 36.3%</p>
+                <p className="text-sm font-bold text-black">💰 Profit: ~40% mai mic</p>
+                <p className="text-sm font-bold text-black">⚠️ Marjă redusă</p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -406,4 +451,4 @@ const MenuCalculator = () => {
   );
 };
 
-export default MenuCalculator;
+export default MenuOfflineCalculator;
