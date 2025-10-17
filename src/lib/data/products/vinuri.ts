@@ -1,12 +1,11 @@
-import { Product } from '@/types';
+import type { Product } from '@/types';
 
-// Vinuri și Miniaturi (wines and spirits)
 export const VINURI: Product[] = [
   {
     id: 'vin-1',
     nume: 'Vin Recas feteasca neagra/roze/alba',
-    cantitate: '0,750 ml',
-    pretCost: 15.00, // Estimated
+    cantitate: '750ml',
+    pretCost: 18.00,
     pretOffline: 30.00,
     pretOnline: 35.00,
     category: 'vinuri',
@@ -15,8 +14,8 @@ export const VINURI: Product[] = [
   {
     id: 'vin-2',
     nume: 'Vin Recas alb/rose/rosu',
-    cantitate: '0,187 ml',
-    pretCost: 9.00, // Estimated
+    cantitate: '187ml',
+    pretCost: 12.00,
     pretOffline: 18.00,
     pretOnline: 25.00,
     category: 'vinuri',
@@ -25,8 +24,8 @@ export const VINURI: Product[] = [
   {
     id: 'vin-3',
     nume: 'Bran afinata',
-    cantitate: '0,045 ml',
-    pretCost: 13.50, // Estimated
+    cantitate: '45ml',
+    pretCost: 18.00,
     pretOffline: 27.00,
     pretOnline: 30.00,
     category: 'vinuri',
@@ -35,8 +34,8 @@ export const VINURI: Product[] = [
   {
     id: 'vin-4',
     nume: 'Bran palinca',
-    cantitate: '0,045 ml',
-    pretCost: 13.50, // Estimated
+    cantitate: '45ml',
+    pretCost: 18.00,
     pretOffline: 27.00,
     pretOnline: 30.00,
     category: 'vinuri',
@@ -45,8 +44,8 @@ export const VINURI: Product[] = [
   {
     id: 'vin-5',
     nume: 'Bran rachiu',
-    cantitate: '0,045 ml',
-    pretCost: 13.50, // Estimated
+    cantitate: '45ml',
+    pretCost: 18.00,
     pretOffline: 27.00,
     pretOnline: 30.00,
     category: 'vinuri',
@@ -55,8 +54,8 @@ export const VINURI: Product[] = [
   {
     id: 'vin-6',
     nume: 'Bran visinata',
-    cantitate: '0,045 ml',
-    pretCost: 13.50, // Estimated
+    cantitate: '45ml',
+    pretCost: 18.00,
     pretOffline: 27.00,
     pretOnline: 30.00,
     category: 'vinuri',

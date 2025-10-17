@@ -11,80 +11,67 @@ export type ProductCategory =
   | 'auxiliare' 
   | 'placinte';
 
+export interface Product {
+  id: string;
+  nume: string;
+  cantitate: string;
+  pretCost: number;
+  pretOffline: number;
+  pretOnline: number;
+  category: ProductCategory;
+  isActive: boolean;
+}
+
 // Category Metadata for UI display
 export interface CategoryMetadata {
-  key: string;
+  key: ProductCategory;
   label: string;
   icon: string;
   color: string;
   description: string;
 }
 
-export interface Product {
-  id: string;
-  nume: string;
-  cantitate: string;        // "200 gr", "250 ml", etc.
-  pretCost: number;         // Cost price
-  pretOffline: number;      // Offline/restaurant selling price
-  pretOnline: number;       // Online/delivery selling price
-  category: ProductCategory;
-  isActive: boolean;
-  
-  // Sales data for analytics
-  salesOffline?: number;    // Monthly sales count offline
-  salesOnline?: number;     // Monthly sales count online
-  popularity?: number;      // Calculated popularity score (0-100)
-}
-
-export interface UserProduct extends Product {
-  userId: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-// Fixed Menu Combo Type
+// Fixed Menu Combo
 export interface FixedMenuCombo {
   id: string;
-  name: string;              // "Combo 1", "Meniu Economic", etc.
-  products: {
+  name: string;
+  products: Array<{
     category: ProductCategory;
     productId: string;
     productName: string;
-  }[];
+  }>;
   totalCost: number;
-  individualPrice: number;   // Sum of individual prices
-  comboPrice: number;        // User-set combo price
+  individualPrice: number;
+  comboPrice: number;
   profit: number;
   marjaProfit: number;
-  discount: number;          // Amount saved
-  discountPercent: number;   // Percentage saved
+  discount: number;
+  discountPercent: number;
 }
 
 // Variable Menu Configuration
 export interface VariableMenuConfig {
-  id: string;
-  name: string;
-  categories: {
-    category: ProductCategory;
-    productIds: string[];    // Selected products for this category
-  }[];
-  generatedCombinations?: MenuCombination[];
+  categories: ProductCategory[];
+  productsPerCategory: Record<ProductCategory, string[]>; // productIds
+  priceRange: {
+    min: number;
+    max: number;
+  };
 }
 
+// Menu Combination (for variations calculator)
 export interface MenuCombination {
-  products: {
-    category: ProductCategory;
-    productId: string;
-    productName: string;
-    price: number;
-  }[];
-  totalCost: number;
-  totalPrice: number;
+  products: Product[];
+  costTotal: number;
+  pretIndividual: number;
+  pretMeniu: number;
   profit: number;
   marjaProfit: number;
+  discount: number;
+  discountPercent: number;
 }
 
-// Existing Simulation Types
+// Simulation (legacy - keep for compatibility)
 export interface Simulation {
   ciorba: string;
   felPrincipal: string;
@@ -94,87 +81,20 @@ export interface Simulation {
   marjaProfit: number;
 }
 
-export interface MenuOfflineSimulation {
-  ciorba: string;
-  felPrincipal: string;
-  garnitura: string;
-  costProduse: number;
-  pretIndividual: number;
-  pretMeniu: number;
-  economie: number;
-  economieProcentuala: number;
-}
-
-export interface MenuFixSimulation {
-  felPrincipal: string;
-  garnitura: string;
-  costProduse: number;
-  pretMeniu: number;
-  economie: number;
-  economieProcentuala: number;
-}
-
-export interface MenuCateringSimulation {
-  ciorba?: string;
-  felPrincipal: string;
-  garnitura: string;
-  desert?: string;
-  bautura?: string;
-  auxiliare?: string[];
-  costTotal: number;
-  pretMeniu: number;
-  profit: number;
-  marjaProfit: number;
-  items: string[];
-}
-
-// Analytics Types
+// Analytics
 export interface ProductAnalytics {
-  product: Product;
-  totalSales: number;
-  revenue: number;
-  profit: number;
-  marginPercent: number;
-  trend: 'up' | 'down' | 'stable';
-}
-
-export interface SalesForcast {
-  month: string;
-  predictedSales: number;
-  confidence: number;
-}
-
-export interface SurveyData {
-  month: string;
   productId: string;
-  salesCount: number;
-  userId: string;
+  productName: string;
+  category: ProductCategory;
+  totalRevenue: number;
+  averageMargin: number;
+  timesUsed: number;
 }
 
-// Calculation Settings
-export interface CalculationSettings {
-  pretVanzare: number;
-  costuriFix: number;
-  marjaDorita: number;
-  includeDesert?: boolean;
-  includeBautura?: boolean;
-}
-
-export interface CalculationResult {
-  id: string;
-  userId: string;
-  calculationType: 'online' | 'offline' | 'catering';
-  menuType: 'fix' | 'variabil' | 'standard';
-  settings: CalculationSettings;
-  results: Simulation[] | MenuOfflineSimulation[] | MenuCateringSimulation[] | FixedMenuCombo[];
-  createdAt: string;
-}
-
-// User Type
-export interface User {
-  id: string;
-  email: string;
-  fullName?: string;
-  companyName?: string;
-  createdAt: string;
+export interface CategoryAnalytics {
+  category: ProductCategory;
+  totalProducts: number;
+  averageCost: number;
+  averagePrice: number;
+  mostUsed: string; // product name
 }

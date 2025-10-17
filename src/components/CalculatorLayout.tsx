@@ -4,18 +4,16 @@ import React, { useState } from 'react';
 import MenuCalculator from './MenuCalculator';
 import MenuOfflineCalculator from './MenuOfflineCalculator';
 import MenuCateringCalculator from './MenuCateringCalculator';
-import MenuFixBuilder from './MenuFixBuilder';
 
-type CalculatorType = 'online' | 'offline' | 'fix' | 'catering';
+type CalculatorType = 'online' | 'offline' | 'catering';
 
 const CalculatorLayout = () => {
   const [activeTab, setActiveTab] = useState<CalculatorType>('online');
 
   const tabs = [
-    { id: 'online' as CalculatorType, label: '🚚 ONLINE (Delivery)', icon: '📦' },
-    { id: 'offline' as CalculatorType, label: '🏪 OFFLINE (Restaurant)', icon: '🍽️' },
-    { id: 'fix' as CalculatorType, label: '📋 MENIU FIX', icon: '📋' },
-    { id: 'catering' as CalculatorType, label: '🎉 CATERING', icon: '🎊' },
+    { id: 'online' as CalculatorType, label: 'ONLINE (Delivery)', icon: '📦' },
+    { id: 'offline' as CalculatorType, label: 'OFFLINE (Restaurant)', icon: '🍽️' },
+    { id: 'catering' as CalculatorType, label: 'CATERING', icon: '🎉' },
   ];
 
   return (
@@ -37,9 +35,9 @@ const CalculatorLayout = () => {
         </div>
       </div>
 
-      {/* Tab Navigation */}
+      {/* Tab Navigation - 3 TABS ONLY */}
       <div className="bg-white rounded-3xl shadow-2xl p-4 mb-6 border-4 border-black">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -55,8 +53,8 @@ const CalculatorLayout = () => {
             >
               <div className="flex items-center justify-center gap-2">
                 <span className="text-2xl">{tab.icon}</span>
-                <span className="hidden md:inline">{tab.label}</span>
-                <span className="md:hidden">{tab.label.split(' ')[0]}</span>
+                <span className="hidden lg:inline">{tab.label}</span>
+                <span className="lg:hidden text-xs">{tab.label.split(' ')[0]}</span>
               </div>
             </button>
           ))}

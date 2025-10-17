@@ -2,6 +2,12 @@
 
 import React, { useState, useMemo } from 'react';
 import type { Product, ProductCategory, FixedMenuCombo } from '@/types';
+import { CATEGORIES, getCategoryIcon, getCategoryLabel } from '@/lib/data/categories';
+
+interface CategorySlot {
+  id: string;
+  category: ProductCategory;
+}
 
 interface MeniuFixBuilderProps {
   products: Product[];
@@ -11,44 +17,67 @@ interface MeniuFixBuilderProps {
 const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({ products, calculatorType }) => {
   
   const [combos, setCombos] = useState<FixedMenuCombo[]>([]);
-  const [categorySlots, setCategorySlots] = useState<{ id: string; category: ProductCategory }[]>([]);
-  const [currentCombo, setCurrentCombo] = useState<{
-    name: string;
-    selectedProducts: Record<string, string>;
-    comboPrice: number;
-  }>({
-    name: '',
-    selectedProducts: {},
-    comboPrice: 0
-  });
+  const [categorySlots, setCategorySlots] = useState<CategorySlot[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<Record<string, string>>({});
+  const [comboName, setComboName] = useState<string>('');
+  const [comboPrice, setComboPrice] = useState<number>(35);
 
-  // Group products by category
+  // Online: 3 lei packaging + 36.3% commission
+  // Offline/Catering: No extra costs
+  const COSTURI_FIXE = calculatorType === 'online' ? 0 : 0; // Will add dynamically in calculations
+
+  const availableCategories: ProductCategory[] = [
+    'ciorbe', 'felPrincipal', 'garnituri', 'desert', 'salate', 
+    'bauturi', 'vinuri', 'placinte'
+  ];
+
   const productsByCategory = useMemo(() => {
-    return products.reduce((acc, p) => {
-      if (!acc[p.category]) acc[p.category] = [];
-      if (p.isActive) acc[p.category].push(p);
-      return acc;
-    }, {} as Record<ProductCategory, Product[]>);
+    const grouped: Record<ProductCategory, Product[]> = {} as Record<ProductCategory, Product[]>;
+    availableCategories.forEach(cat => {
+      grouped[cat] = products.filter(p => p.category === cat && p.isActive);
+    });
+    return grouped;
   }, [products]);
 
-  const availableCategories = Object.keys(productsByCategory) as ProductCategory[];
+  const handleAddCategory = (category: ProductCategory) => {
+    setCategorySlots(prev => [...prev, { 
+      id: `${category}-${Date.now()}`, 
+      category 
+    }]);
+  };
+
+  const handleRemoveSlot = (slotId: string) => {
+    setCategorySlots(prev => prev.filter(s => s.id !== slotId));
+    setSelectedProducts(prev => {
+      const updated = { ...prev };
+      delete updated[slotId];
+      return updated;
+    });
+  };
+
+  const handleProductSelect = (slotId: string, productId: string) => {
+    setSelectedProducts(prev => ({
+      ...prev,
+      [slotId]: productId
+    }));
+  };
 
   const selectedProductsArray = useMemo(() => {
-    return currentCombo.selectedCategories
-      .map(category => {
-        const productId = currentCombo.selectedProducts[category];
-        const product = products.find(p => p.id === productId);
-        return product ? { category, product } : null;
-      })
-      .filter(Boolean) as { category: ProductCategory; product: Product }[];
-  }, [currentCombo.selectedCategories, currentCombo.selectedProducts, products]);
+    return categorySlots.map(slot => {
+      const productId = selectedProducts[slot.id];
+      if (!productId) return null;
+      const product = products.find(p => p.id === productId);
+      if (!product) return null;
+      return { slotId: slot.id, category: slot.category, product };
+    }).filter(Boolean) as Array<{ slotId: string; category: ProductCategory; product: Product }>;
+  }, [categorySlots, selectedProducts, products]);
 
   const comboCalculations = useMemo(() => {
     if (selectedProductsArray.length < 2) {
       return {
         totalCost: 0,
         individualPrice: 0,
-        comboPrice: currentCombo.comboPrice,
+        comboPrice: comboPrice,
         profit: 0,
         marjaProfit: 0,
         discount: 0,
@@ -56,350 +85,329 @@ const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({ products, calculatorT
       };
     }
 
-    const totalCost = selectedProductsArray.reduce((sum, { product }) => sum + product.pretCost, 0);
-    const individualPrice = selectedProductsArray.reduce((sum, { product }) => {
-      const price = calculatorType === 'online' ? product.pretOnline : product.pretOffline;
-      return sum + price;
-    }, 0);
+    const totalCost = selectedProductsArray.reduce((sum, { product }) => 
+      sum + product.pretCost, 0) + COSTURI_FIXE;
     
-    const profit = currentCombo.comboPrice - totalCost;
-    const marjaProfit = totalCost > 0 ? (profit / totalCost) * 100 : 0;
-    const discount = individualPrice - currentCombo.comboPrice;
-    const discountPercent = individualPrice > 0 ? (discount / individualPrice) * 100 : 0;
+    const individualPrice = selectedProductsArray.reduce((sum, { product }) => 
+      sum + (calculatorType === 'online' ? product.pretOnline : product.pretOffline), 0);
+    
+    const profit = comboPrice - totalCost;
+    const marjaProfit = (profit / totalCost) * 100;
+    const discount = individualPrice - comboPrice;
+    const discountPercent = (discount / individualPrice) * 100;
 
     return {
       totalCost,
       individualPrice,
-      comboPrice: currentCombo.comboPrice,
+      comboPrice,
       profit,
       marjaProfit,
       discount,
       discountPercent
     };
-  }, [selectedProductsArray, currentCombo.comboPrice, calculatorType]);
+  }, [selectedProductsArray, comboPrice, calculatorType, COSTURI_FIXE]);
 
-  const handleAddCombo = () => {
-    if (currentCombo.selectedCategories.length < 2) {
-      alert('Selectează minimum 2 categorii!');
-      return;
-    }
-    if (!currentCombo.name.trim()) {
-      alert('Introdu un nume pentru combo!');
-      return;
-    }
-    if (currentCombo.comboPrice <= 0) {
-      alert('Setează un preț pentru combo!');
+  const handleSaveCombo = () => {
+    if (selectedProductsArray.length < 2 || !comboName.trim()) {
+      alert('Te rog adaugă minimum 2 produse și un nume pentru combo!');
       return;
     }
 
     const newCombo: FixedMenuCombo = {
       id: `combo-${Date.now()}`,
-      name: currentCombo.name,
+      name: comboName,
       products: selectedProductsArray.map(({ category, product }) => ({
         category,
         productId: product.id,
         productName: product.nume
       })),
-      totalCost: comboCalculations.totalCost,
-      individualPrice: comboCalculations.individualPrice,
-      comboPrice: currentCombo.comboPrice,
-      profit: comboCalculations.profit,
-      marjaProfit: comboCalculations.marjaProfit,
-      discount: comboCalculations.discount,
-      discountPercent: comboCalculations.discountPercent
+      ...comboCalculations
     };
 
-    setCombos([...combos, newCombo]);
+    setCombos(prev => [...prev, newCombo]);
     
     // Reset form
-    setCurrentCombo({
-      name: '',
-      selectedCategories: [],
-      selectedProducts: {} as Record<ProductCategory, string>,
-      comboPrice: 0
-    });
+    setCategorySlots([]);
+    setSelectedProducts({});
+    setComboName('');
+    setComboPrice(35);
   };
 
   const handleDeleteCombo = (comboId: string) => {
-    setCombos(combos.filter(c => c.id !== comboId));
-  };
-
-  const handleToggleCategory = (category: ProductCategory) => {
-    if (currentCombo.selectedCategories.includes(category)) {
-      setCurrentCombo({
-        ...currentCombo,
-        selectedCategories: currentCombo.selectedCategories.filter(c => c !== category),
-        selectedProducts: {
-          ...currentCombo.selectedProducts,
-          [category]: ''
-        }
-      });
-    } else {
-      setCurrentCombo({
-        ...currentCombo,
-        selectedCategories: [...currentCombo.selectedCategories, category]
-      });
-    }
-  };
-
-  const getCategoryIcon = (category: string) => {
-    const icons: Record<string, string> = {
-      'ciorbe': '🍲',
-      'fel_Principal': '🍖',
-      'garnituri': '🥔',
-      'desert': '🍰',
-      'salate': '🥗',
-      'bauturi': '🥤',
-      'vinuri': '🍷',
-      'auxiliare': '🍞',
-      'placinte': '🥧'
-    };
-    return icons[category] || '📦';
-  };
-
-  const getCategoryName = (category: string) => {
-    const names: Record<string, string> = {
-      'ciorbe': 'Ciorbă',
-      'fel_Principal': 'Fel Principal',
-      'garnituri': 'Garnitură',
-      'desert': 'Desert',
-      'salate': 'Salată',
-      'bauturi': 'Băutură',
-      'vinuri': 'Vin',
-      'auxiliare': 'Auxiliare',
-      'placinte': 'Plăcintă'
-    };
-    return names[category] || category;
+    setCombos(prev => prev.filter(c => c.id !== comboId));
   };
 
   return (
     <div className="space-y-6">
       
-      {/* Header */}
+      {/* Step 1: Add Categories */}
       <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-black">
-        <h2 className="text-3xl font-black text-black mb-2">🔒 MENIU FIX - BUILDER</h2>
-        <p className="text-gray-700 font-semibold">
-          Creează combo-uri cu preț fix. Selectează categorii, apoi produse.
+        <h3 className="text-2xl font-black mb-4 text-black">
+          📋 PASUL 1: ADAUGĂ CATEGORII
+        </h3>
+        <p className="text-sm font-bold text-gray-700 mb-4">
+          Selectează categoriile pentru combo (minimum 2)
         </p>
-      </div>
-
-      {/* Combo Builder */}
-      <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-[#FFC857]">
-        <h3 className="text-2xl font-black text-black mb-6">➕ CREEAZĂ COMBO NOU</h3>
         
-        {/* Combo Name */}
-        <div className="mb-6">
-          <label className="block text-sm font-bold text-black mb-2">Nume Combo:</label>
-          <input 
-            type="text"
-            value={currentCombo.name}
-            onChange={(e) => setCurrentCombo({ ...currentCombo, name: e.target.value })}
-            placeholder="Ex: Meniu Economic, Combo Tradițional..."
-            className="w-full p-4 rounded-xl border-4 border-black text-lg font-bold"
-          />
-        </div>
-
-        {/* Step 1: Select Categories */}
-        <div className="mb-6">
-          <h4 className="text-xl font-black text-black mb-4">1️⃣ SELECTEAZĂ CATEGORII (min. 2):</h4>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {availableCategories.map(category => (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {availableCategories.map(category => {
+            const categoryInfo = CATEGORIES[category];
+            const count = productsByCategory[category]?.length || 0;
+            
+            return (
               <button
                 key={category}
-                onClick={() => handleToggleCategory(category)}
-                className={`p-6 rounded-2xl border-4 transition-all ${
-                  currentCombo.selectedCategories.includes(category)
-                    ? 'bg-[#9eff55] border-black scale-105 shadow-xl'
-                    : 'bg-white border-gray-300 hover:border-black'
-                }`}
+                onClick={() => handleAddCategory(category)}
+                disabled={count === 0}
+                className="flex flex-col items-center gap-2 p-4 rounded-2xl border-4 border-black hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ backgroundColor: categoryInfo.color }}
               >
-                <div className="text-4xl mb-2">{getCategoryIcon(category)}</div>
-                <div className="font-black text-black text-sm">{getCategoryName(category)}</div>
-                <div className="text-xs text-gray-600 mt-1">
-                  {currentCombo.selectedCategories.includes(category) ? '✅' : ''}
-                </div>
+                <span className="text-3xl">{categoryInfo.icon}</span>
+                <span className="text-xs font-black text-black text-center">
+                  {categoryInfo.label}
+                </span>
+                <span className="text-xs font-bold text-gray-800">
+                  {count} produse
+                </span>
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
 
-        {/* Step 2: Select Products from Each Category */}
-        {currentCombo.selectedCategories.length > 0 && (
-          <div className="mb-6">
-            <h4 className="text-xl font-black text-black mb-4">2️⃣ SELECTEAZĂ PRODUSE:</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {currentCombo.selectedCategories.map(category => (
-                <div key={category}>
-                  <label className="block text-sm font-bold text-black mb-2 flex items-center gap-2">
-                    <span>{getCategoryIcon(category)}</span>
-                    {getCategoryName(category)}:
-                  </label>
-                  <select
-                    value={currentCombo.selectedProducts[category] || ''}
-                    onChange={(e) => setCurrentCombo({
-                      ...currentCombo,
-                      selectedProducts: {
-                        ...currentCombo.selectedProducts,
-                        [category]: e.target.value
-                      }
-                    })}
-                    className="w-full p-3 rounded-xl border-2 border-black font-bold"
+        {/* Added Categories Display */}
+        {categorySlots.length > 0 && (
+          <div className="mt-6 p-4 bg-yellow-100 rounded-2xl border-2 border-black">
+            <p className="text-sm font-black text-black mb-3">
+              CATEGORII ADĂUGATE ({categorySlots.length})
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {categorySlots.map((slot, index) => {
+                const categoryInfo = CATEGORIES[slot.category];
+                return (
+                  <div 
+                    key={slot.id}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl border-2 border-black"
+                    style={{ backgroundColor: categoryInfo.color }}
                   >
-                    <option value="">-- Selectează --</option>
-                    {productsByCategory[category]?.map(product => (
+                    <span className="text-lg">{categoryInfo.icon}</span>
+                    <span className="text-xs font-black text-black">
+                      #{index + 1} {categoryInfo.label}
+                    </span>
+                    <button
+                      onClick={() => handleRemoveSlot(slot.id)}
+                      className="ml-2 px-2 py-1 bg-black text-white rounded-lg text-xs font-bold hover:bg-red-600"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Step 2: Select Products */}
+      {categorySlots.length >= 2 && (
+        <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-black">
+          <h3 className="text-2xl font-black mb-4 text-black">
+            🎯 PASUL 2: SELECTEAZĂ PRODUSELE
+          </h3>
+          <p className="text-sm font-bold text-gray-700 mb-4">
+            Alege câte un produs din fiecare categorie
+          </p>
+
+          <div className="space-y-4">
+            {categorySlots.map((slot, index) => {
+              const categoryInfo = CATEGORIES[slot.category];
+              const categoryProducts = productsByCategory[slot.category] || [];
+
+              return (
+                <div key={slot.id} className="p-4 rounded-2xl border-2 border-black" style={{ backgroundColor: `${categoryInfo.color}40` }}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-2xl">{categoryInfo.icon}</span>
+                    <span className="text-sm font-black text-black">
+                      #{index + 1} {categoryInfo.label}
+                    </span>
+                  </div>
+                  
+                  <select
+                    value={selectedProducts[slot.id] || ''}
+                    onChange={(e) => handleProductSelect(slot.id, e.target.value)}
+                    className="w-full p-3 rounded-xl border-2 border-black font-bold text-black bg-white"
+                  >
+                    <option value="">Selectează produs...</option>
+                    {categoryProducts.map(product => (
                       <option key={product.id} value={product.id}>
-                        {product.nume} ({product.pretCost.toFixed(2)} lei)
+                        {product.nume} - {product.pretCost.toFixed(2)} lei
                       </option>
                     ))}
                   </select>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
-        )}
-
-        {/* Selected Products Preview */}
-        {selectedProductsArray.length > 0 && (
-          <div className="mb-6 p-6 rounded-2xl border-4 border-[#BBDCFF] bg-[#BBDCFF]/20">
-            <h4 className="font-black text-black mb-4">📋 PRODUSE SELECTATE:</h4>
-            <div className="space-y-2">
-              {selectedProductsArray.map(({ category, product }) => (
-                <div key={product.id} className="flex justify-between items-center p-3 bg-white rounded-xl border-2 border-black">
-                  <span className="font-bold text-black">
-                    {getCategoryIcon(category)} {product.nume}
-                  </span>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-gray-600">Cost: {product.pretCost.toFixed(2)} lei</p>
-                    <p className="text-sm font-bold text-blue-600">
-                      Preț: {(calculatorType === 'online' ? product.pretOnline : product.pretOffline).toFixed(2)} lei
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Calculations */}
-        {selectedProductsArray.length >= 2 && (
-          <div className="mb-6 p-6 rounded-2xl border-4 border-[#9eff55] bg-[#9eff55]/20">
-            <h4 className="font-black text-black mb-4">💰 CALCULE AUTOMATE:</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="p-4 bg-white rounded-xl border-2 border-black">
-                <p className="text-xs text-gray-600 mb-1">Cost Total:</p>
-                <p className="text-2xl font-black text-black">{comboCalculations.totalCost.toFixed(2)} lei</p>
-              </div>
-              <div className="p-4 bg-white rounded-xl border-2 border-black">
-                <p className="text-xs text-gray-600 mb-1">Preț Individual:</p>
-                <p className="text-2xl font-black text-blue-600">{comboCalculations.individualPrice.toFixed(2)} lei</p>
-              </div>
-              <div className="p-4 bg-white rounded-xl border-2 border-black">
-                <p className="text-xs text-gray-600 mb-1">Discount Sugerat:</p>
-                <p className="text-2xl font-black text-yellow-600">
-                  {comboCalculations.discountPercent > 0 ? comboCalculations.discountPercent.toFixed(0) : '0'}%
-                </p>
-              </div>
-              <div className="p-4 bg-white rounded-xl border-2 border-black">
-                <p className="text-xs text-gray-600 mb-1">Marjă (la preț combo):</p>
-                <p className="text-2xl font-black text-green-600">{comboCalculations.marjaProfit.toFixed(0)}%</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Combo Price Input */}
-        <div className="mb-6">
-          <label className="block text-sm font-bold text-black mb-2">Preț Combo (LEI):</label>
-          <input 
-            type="number"
-            value={currentCombo.comboPrice || ''}
-            onChange={(e) => setCurrentCombo({ ...currentCombo, comboPrice: parseFloat(e.target.value) || 0 })}
-            placeholder="Ex: 35"
-            min="0"
-            step="0.5"
-            className="w-full p-4 rounded-xl border-4 border-black text-2xl font-black text-center"
-          />
-          {comboCalculations.individualPrice > 0 && (
-            <p className="text-sm text-gray-600 mt-2 text-center">
-              Preț individual: {comboCalculations.individualPrice.toFixed(2)} lei | 
-              Economie client: {comboCalculations.discount.toFixed(2)} lei ({comboCalculations.discountPercent.toFixed(0)}%)
-            </p>
-          )}
         </div>
+      )}
 
-        {/* Add Button */}
-        <button
-          onClick={handleAddCombo}
-          disabled={selectedProductsArray.length < 2 || !currentCombo.name.trim() || currentCombo.comboPrice <= 0}
-          className="w-full p-6 bg-[#9eff55] rounded-2xl border-4 border-black font-black text-2xl hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          ➕ ADAUGĂ COMBO
-        </button>
-      </div>
+      {/* Step 3: Combo Configuration */}
+      {selectedProductsArray.length >= 2 && (
+        <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-black">
+          <h3 className="text-2xl font-black mb-4 text-black">
+            💰 PASUL 3: CONFIGUREAZĂ COMBOBOX-UL
+          </h3>
+
+          {/* Combo Name */}
+          <div className="mb-6">
+            <label className="block text-sm font-black text-black mb-2">
+              NUMELE COMBOULUI
+            </label>
+            <input
+              type="text"
+              value={comboName}
+              onChange={(e) => setComboName(e.target.value)}
+              placeholder="Ex: Meniu Tradițional"
+              className="w-full p-3 rounded-xl border-2 border-black font-bold text-black"
+            />
+          </div>
+
+          {/* Price Slider */}
+          <div className="mb-6">
+            <label className="block text-sm font-black text-black mb-2">
+              PREȚ COMBO: {comboPrice.toFixed(2)} LEI
+            </label>
+            <input
+              type="range"
+              min="20"
+              max="80"
+              step="0.5"
+              value={comboPrice}
+              onChange={(e) => setComboPrice(parseFloat(e.target.value))}
+              className="w-full h-4 bg-yellow-300 rounded-lg cursor-pointer border-2 border-black"
+            />
+            <div className="flex justify-between text-xs font-bold text-black mt-1">
+              <span>20 LEI</span>
+              <span>80 LEI</span>
+            </div>
+          </div>
+
+          {/* Selected Products Preview */}
+          <div className="mb-6 p-4 bg-blue-100 rounded-2xl border-2 border-black">
+            <p className="text-sm font-black text-black mb-2">PRODUSE SELECTATE:</p>
+            {selectedProductsArray.map(({ category, product }, index) => (
+              <p key={index} className="text-xs font-bold text-black">
+                • {getCategoryLabel(category)}: {product.nume} ({product.pretCost.toFixed(2)} lei)
+              </p>
+            ))}
+          </div>
+
+          {/* Calculations */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="p-4 rounded-2xl border-2 border-black bg-yellow-200">
+              <p className="text-xs font-black text-black">COST TOTAL</p>
+              <p className="text-2xl font-black text-black">{comboCalculations.totalCost.toFixed(2)} LEI</p>
+            </div>
+            <div className="p-4 rounded-2xl border-2 border-black bg-blue-200">
+              <p className="text-xs font-black text-black">PREȚ INDIVIDUAL</p>
+              <p className="text-2xl font-black text-black">{comboCalculations.individualPrice.toFixed(2)} LEI</p>
+            </div>
+            <div className="p-4 rounded-2xl border-2 border-black bg-green-200">
+              <p className="text-xs font-black text-black">PROFIT</p>
+              <p className={`text-2xl font-black ${comboCalculations.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {comboCalculations.profit >= 0 ? '+' : ''}{comboCalculations.profit.toFixed(2)} LEI
+              </p>
+            </div>
+            <div className="p-4 rounded-2xl border-2 border-black bg-purple-200">
+              <p className="text-xs font-black text-black">MARJĂ</p>
+              <p className={`text-2xl font-black ${comboCalculations.marjaProfit >= 100 ? 'text-green-600' : 'text-red-600'}`}>
+                {comboCalculations.marjaProfit.toFixed(1)}%
+              </p>
+            </div>
+          </div>
+
+          {/* Discount Info */}
+          <div className="p-4 bg-green-100 rounded-2xl border-2 border-black mb-6">
+            <p className="text-sm font-black text-black">
+              🎉 DISCOUNT PENTRU CLIENT: {comboCalculations.discount.toFixed(2)} LEI 
+              ({comboCalculations.discountPercent.toFixed(1)}%)
+            </p>
+          </div>
+
+          {/* Save Button */}
+          <button
+            onClick={handleSaveCombo}
+            disabled={!comboName.trim() || selectedProductsArray.length < 2}
+            className="w-full py-4 bg-green-500 text-white rounded-2xl border-4 border-black font-black text-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            💾 SALVEAZĂ COMBO
+          </button>
+        </div>
+      )}
 
       {/* Saved Combos */}
       {combos.length > 0 && (
         <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-black">
-          <h3 className="text-2xl font-black text-black mb-6">✅ COMBO-URI SALVATE ({combos.length})</h3>
+          <h3 className="text-2xl font-black mb-4 text-black">
+            📦 COMBO-URI SALVATE ({combos.length})
+          </h3>
+
           <div className="space-y-4">
-            {combos.map(combo => (
-              <div key={combo.id} className={`p-6 rounded-2xl border-4 ${
-                combo.marjaProfit >= 100 ? 'border-green-600 bg-green-50' :
-                combo.marjaProfit >= 50 ? 'border-yellow-600 bg-yellow-50' :
-                'border-red-600 bg-red-50'
-              }`}>
+            {combos.map((combo) => (
+              <div 
+                key={combo.id}
+                className={`p-6 rounded-2xl border-4 border-black ${
+                  combo.marjaProfit >= 100 ? 'bg-green-200' :
+                  combo.marjaProfit >= 50 ? 'bg-yellow-200' : 'bg-red-200'
+                }`}
+              >
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h4 className="text-xl font-black text-black">{combo.name}</h4>
-                    <p className="text-sm text-gray-600">{combo.products.length} produse</p>
+                    <h4 className="text-lg font-black text-black mb-2">{combo.name}</h4>
+                    <p className="text-xs font-bold text-gray-800">
+                      {combo.products.length} produse
+                    </p>
                   </div>
                   <button
                     onClick={() => handleDeleteCombo(combo.id)}
-                    className="px-4 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700"
+                    className="px-4 py-2 bg-black text-white rounded-xl font-bold hover:bg-red-600"
                   >
-                    🗑️ Șterge
+                    🗑️ ȘTERGE
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <p className="text-xs font-bold text-gray-600 mb-2">PRODUSE:</p>
-                    {combo.products.map(p => (
-                      <p key={p.productId} className="text-sm font-bold text-black">
-                        • {p.productName}
-                      </p>
-                    ))}
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
+                  <div className="text-center">
+                    <p className="text-xs font-bold text-gray-800">PREȚ COMBO</p>
+                    <p className="text-lg font-black text-black">{combo.comboPrice.toFixed(2)} LEI</p>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between p-2 bg-white rounded border-2 border-black">
-                      <span className="text-sm font-bold">Cost Total:</span>
-                      <span className="text-sm font-black">{combo.totalCost.toFixed(2)} lei</span>
-                    </div>
-                    <div className="flex justify-between p-2 bg-white rounded border-2 border-black">
-                      <span className="text-sm font-bold">Preț Individual:</span>
-                      <span className="text-sm font-black text-blue-600">{combo.individualPrice.toFixed(2)} lei</span>
-                    </div>
-                    <div className="flex justify-between p-2 bg-white rounded border-2 border-black">
-                      <span className="text-sm font-bold">Preț Combo:</span>
-                      <span className="text-lg font-black text-black">{combo.comboPrice.toFixed(2)} lei</span>
-                    </div>
-                    <div className="flex justify-between p-2 bg-white rounded border-2 border-black">
-                      <span className="text-sm font-bold">Economie Client:</span>
-                      <span className="text-sm font-black text-green-600">-{combo.discount.toFixed(2)} lei ({combo.discountPercent.toFixed(0)}%)</span>
-                    </div>
-                    <div className="flex justify-between p-2 bg-white rounded border-2 border-black">
-                      <span className="text-sm font-bold">Profit:</span>
-                      <span className="text-sm font-black text-green-600">+{combo.profit.toFixed(2)} lei</span>
-                    </div>
-                    <div className="flex justify-between p-2 bg-white rounded border-2 border-black">
-                      <span className="text-sm font-bold">Marjă:</span>
-                      <span className={`text-lg font-black ${
-                        combo.marjaProfit >= 100 ? 'text-green-600' :
-                        combo.marjaProfit >= 50 ? 'text-yellow-600' :
-                        'text-red-600'
-                      }`}>{combo.marjaProfit.toFixed(1)}%</span>
-                    </div>
+                  <div className="text-center">
+                    <p className="text-xs font-bold text-gray-800">COST</p>
+                    <p className="text-lg font-black text-black">{combo.totalCost.toFixed(2)} LEI</p>
                   </div>
+                  <div className="text-center">
+                    <p className="text-xs font-bold text-gray-800">PROFIT</p>
+                    <p className={`text-lg font-black ${combo.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {combo.profit >= 0 ? '+' : ''}{combo.profit.toFixed(2)} LEI
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs font-bold text-gray-800">MARJĂ</p>
+                    <p className={`text-lg font-black ${combo.marjaProfit >= 100 ? 'text-green-600' : 'text-red-600'}`}>
+                      {combo.marjaProfit.toFixed(1)}%
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs font-bold text-gray-800">DISCOUNT</p>
+                    <p className="text-lg font-black text-green-600">{combo.discountPercent.toFixed(1)}%</p>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  {combo.products.map((item, index) => (
+                    <p key={index} className="text-xs font-bold text-black">
+                      • {getCategoryLabel(item.category)}: {item.productName}
+                    </p>
+                  ))}
                 </div>
               </div>
             ))}

@@ -1,12 +1,11 @@
-import { Product } from '@/types';
+import type { Product } from '@/types';
 
-// Main courses only (meat/protein dishes)
 export const FELPRINCIPAL: Product[] = [
   {
     id: 'fel-1',
     nume: 'Mazare cu pui',
-    cantitate: '200 gr',
-    pretCost: 5.23, // From original data
+    cantitate: '200gr',
+    pretCost: 5.23,
     pretOffline: 13.00,
     pretOnline: 21.00,
     category: 'felPrincipal',
@@ -15,8 +14,8 @@ export const FELPRINCIPAL: Product[] = [
   {
     id: 'fel-2',
     nume: 'Tocanita de vita cu legume',
-    cantitate: '200 gr',
-    pretCost: 15.12, // From original data
+    cantitate: '200gr',
+    pretCost: 15.12,
     pretOffline: 19.00,
     pretOnline: 26.00,
     category: 'felPrincipal',
@@ -25,8 +24,8 @@ export const FELPRINCIPAL: Product[] = [
   {
     id: 'fel-3',
     nume: 'Pulpe de pui coapte cu usturoi',
-    cantitate: '160 gr',
-    pretCost: 7.09, // From original data
+    cantitate: '160gr',
+    pretCost: 7.09,
     pretOffline: 13.00,
     pretOnline: 21.00,
     category: 'felPrincipal',
@@ -35,8 +34,8 @@ export const FELPRINCIPAL: Product[] = [
   {
     id: 'fel-4',
     nume: 'Aripioare de pui panate',
-    cantitate: '200 gr',
-    pretCost: 6.50, // Estimated
+    cantitate: '200gr',
+    pretCost: 8.50,
     pretOffline: 14.00,
     pretOnline: 23.00,
     category: 'felPrincipal',
@@ -45,88 +44,88 @@ export const FELPRINCIPAL: Product[] = [
   {
     id: 'fel-5',
     nume: 'Carnati la cuptor',
-    cantitate: '140 gr',
-    pretCost: 8.44, // From original data
+    cantitate: '140gr',
+    pretCost: 8.44,
     pretOffline: 14.00,
     pretOnline: 19.00,
     category: 'felPrincipal',
     isActive: true
   },
   {
-    id: 'fel-7',
+    id: 'fel-6',
     nume: 'Parjoale de curcan + sos rosu',
-    cantitate: '220 gr',
-    pretCost: 7.09, // From original data
+    cantitate: '220gr',
+    pretCost: 7.09,
     pretOffline: 13.00,
     pretOnline: 21.00,
     category: 'felPrincipal',
     isActive: true
   },
   {
-    id: 'fel-8',
+    id: 'fel-7',
     nume: 'Sarmale cu afumatura',
-    cantitate: '150 gr (3 buc)',
-    pretCost: 9.03, // From original data
+    cantitate: '150gr (3buc)',
+    pretCost: 9.03,
     pretOffline: 16.00,
     pretOnline: 26.00,
     category: 'felPrincipal',
     isActive: true
   },
   {
-    id: 'fel-10',
+    id: 'fel-8',
     nume: 'Varza calita cu ciolan',
-    cantitate: '200 gr',
-    pretCost: 7.50, // Estimated
+    cantitate: '200gr',
+    pretCost: 7.50,
     pretOffline: 13.00,
     pretOnline: 21.00,
     category: 'felPrincipal',
     isActive: true
   },
   {
-    id: 'fel-15',
+    id: 'fel-9',
     nume: 'Ceafa de porc',
-    cantitate: '200 gr',
-    pretCost: 11.01, // From original data
+    cantitate: '200gr',
+    pretCost: 11.01,
     pretOffline: 16.00,
     pretOnline: 24.00,
     category: 'felPrincipal',
     isActive: true
   },
   {
-    id: 'fel-18',
+    id: 'fel-10',
     nume: 'Crispy (nuggets)',
-    cantitate: '140 gr',
-    pretCost: 9.51, // From original data
+    cantitate: '140gr',
+    pretCost: 9.51,
     pretOffline: 13.00,
     pretOnline: 19.00,
     category: 'felPrincipal',
     isActive: true
   },
   {
-    id: 'fel-19',
+    id: 'fel-11',
     nume: 'Tochitura moldoveneasca',
-    cantitate: '200 gr',
-    pretCost: 9.00, // From original data
+    cantitate: '200gr',
+    pretCost: 9.00,
     pretOffline: 15.00,
     pretOnline: 21.00,
     category: 'felPrincipal',
     isActive: true
   },
   {
-    id: 'fel-20',
+    id: 'fel-12',
     nume: 'Cod Pane',
-    cantitate: '170 gr',
-    pretCost: 6.15, // From original data
+    cantitate: '170gr',
+    pretCost: 6.15,
     pretOffline: 13.00,
     pretOnline: 19.00,
     category: 'felPrincipal',
     isActive: true
   },
   {
-    id: 'fel-21',
+    id: 'fel-13',
     nume: 'Snitel de pui',
-    cantitate: '200 gr',
-    pretCost: 5.08, // From original data
+    cantitate: '200gr',
+    pretCost: 5.08,
     pretOffline: 12.00,
     pretOnline: 19.00,
     category: 'felPrincipal',

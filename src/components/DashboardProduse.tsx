@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Product, ProductCategory } from '@/types';
+import { CATEGORIES, getCategoryIcon, getCategoryLabel } from '@/lib/data/categories';
 
 interface DashboardProduseProps {
   products: Product[];
@@ -10,326 +11,292 @@ interface DashboardProduseProps {
 
 const DashboardProduse: React.FC<DashboardProduseProps> = ({ products, calculatorType }) => {
   
-  const analytics = useMemo(() => {
-    // Calculate best margin products
-    const withMargins = products.map(p => {
-      const price = calculatorType === 'online' ? p.pretOnline : p.pretOffline;
-      const profit = price - p.pretCost;
-      const margin = (profit / p.pretCost) * 100;
-      return { ...p, profit, margin, price };
+  const [expandedCategories, setExpandedCategories] = useState<Set<ProductCategory>>(new Set());
+
+  const toggleCategory = (category: ProductCategory) => {
+    setExpandedCategories(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(category)) {
+        newSet.delete(category);
+      } else {
+        newSet.add(category);
+      }
+      return newSet;
     });
+  };
 
-    const bestMargin = [...withMargins]
-      .filter(p => p.isActive)
-      .sort((a, b) => b.margin - a.margin)
-      .slice(0, 5);
+  const expandAll = () => {
+    const allCategories: ProductCategory[] = [
+      'ciorbe', 'felPrincipal', 'garnituri', 'desert', 
+      'salate', 'bauturi', 'vinuri', 'placinte'
+    ];
+    setExpandedCategories(new Set(allCategories));
+  };
 
-    const lowestCost = [...withMargins]
-      .filter(p => p.isActive)
-      .sort((a, b) => a.pretCost - b.pretCost)
-      .slice(0, 5);
+  const collapseAll = () => {
+    setExpandedCategories(new Set());
+  };
 
-    const bestSelling = [...withMargins]
-      .filter(p => p.isActive)
-      .sort((a, b) => {
-        const salesA = calculatorType === 'online' ? (a.salesOnline || 0) : (a.salesOffline || 0);
-        const salesB = calculatorType === 'online' ? (b.salesOnline || 0) : (b.salesOffline || 0);
-        return salesB - salesA;
-      })
-      .slice(0, 5);
-
-    // Group by category
-    const byCategory = products.reduce((acc, p) => {
-      if (!acc[p.category]) acc[p.category] = [];
-      acc[p.category].push(p);
-      return acc;
-    }, {} as Record<ProductCategory, Product[]>);
-
-    // Calculate category stats
-    const categoryStats = Object.entries(byCategory).map(([category, items]) => {
-      const avgCost = items.reduce((sum, p) => sum + p.pretCost, 0) / items.length;
-      const avgPrice = items.reduce((sum, p) => {
-        const price = calculatorType === 'online' ? p.pretOnline : p.pretOffline;
-        return sum + price;
-      }, 0) / items.length;
-      const totalSales = items.reduce((sum, p) => {
-        return sum + (calculatorType === 'online' ? (p.salesOnline || 0) : (p.salesOffline || 0));
-      }, 0);
-
-      return {
-        category,
-        count: items.length,
-        avgCost,
-        avgPrice,
-        totalSales,
-        avgMargin: ((avgPrice - avgCost) / avgCost) * 100
-      };
+  const productsByCategory = useMemo(() => {
+    const grouped: Record<ProductCategory, Product[]> = {} as Record<ProductCategory, Product[]>;
+    const categories: ProductCategory[] = [
+      'ciorbe', 'felPrincipal', 'garnituri', 'desert', 
+      'salate', 'bauturi', 'vinuri', 'placinte'
+    ];
+    
+    categories.forEach(cat => {
+      grouped[cat] = products.filter(p => p.category === cat && p.isActive);
     });
+    
+    return grouped;
+  }, [products]);
+
+  const stats = useMemo(() => {
+    const allProducts = products.filter(p => p.isActive);
+    
+    const avgCost = allProducts.reduce((sum, p) => sum + p.pretCost, 0) / allProducts.length;
+    const avgPriceOffline = allProducts.reduce((sum, p) => sum + p.pretOffline, 0) / allProducts.length;
+    const avgPriceOnline = allProducts.reduce((sum, p) => sum + p.pretOnline, 0) / allProducts.length;
+    
+    const avgMarginOffline = ((avgPriceOffline - avgCost) / avgCost) * 100;
+    const avgMarginOnline = ((avgPriceOnline - avgCost) / avgCost) * 100;
 
     return {
-      bestMargin,
-      lowestCost,
-      bestSelling,
-      byCategory,
-      categoryStats
+      totalProducts: allProducts.length,
+      avgCost,
+      avgPriceOffline,
+      avgPriceOnline,
+      avgMarginOffline,
+      avgMarginOnline
     };
-  }, [products, calculatorType]);
-
-  const getCategoryIcon = (category: string) => {
-    const icons: Record<string, string> = {
-      'ciorbe': '🍲',
-      'fel_Principal': '🍖',
-      'garnituri': '🥔',
-      'desert': '🍰',
-      'salate': '🥗',
-      'bauturi': '🥤',
-      'vinuri': '🍷',
-      'auxiliare': '🍞',
-      'placinte': '🥧'
-    };
-    return icons[category] || '📦';
-  };
-
-  const getCategoryName = (category: string) => {
-    const names: Record<string, string> = {
-      'ciorbe': 'Ciorbe',
-      'fel_Principal': 'Feluri Principale',
-      'garnituri': 'Garnituri',
-      'desert': 'Desert',
-      'salate': 'Salate',
-      'bauturi': 'Băuturi',
-      'vinuri': 'Vinuri',
-      'auxiliare': 'Auxiliare',
-      'placinte': 'Plăcinte'
-    };
-    return names[category] || category;
-  };
-
-  const priceLabel = calculatorType === 'online' ? 'Online' : 'Offline';
+  }, [products]);
 
   return (
     <div className="space-y-6">
       
-      {/* Header */}
+      {/* Overview Stats */}
       <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-black">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-black text-black mb-2">📊 DASHBOARD PRODUSE</h2>
-            <p className="text-gray-700 font-semibold">
-              Analiză produse pentru vânzare {priceLabel.toLowerCase()}
-            </p>
+        <h3 className="text-2xl font-black mb-6 text-black">
+          📊 STATISTICI GENERALE
+        </h3>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="p-4 rounded-2xl border-2 border-black bg-yellow-200">
+            <p className="text-xs font-black text-black">PRODUSE ACTIVE</p>
+            <p className="text-3xl font-black text-black">{stats.totalProducts}</p>
           </div>
-          <div className="px-6 py-3 bg-[#9eff55] rounded-2xl border-4 border-black">
-            <p className="text-xs font-bold text-black">TOTAL PRODUSE</p>
-            <p className="text-4xl font-black text-black">{products.length}</p>
+          
+          <div className="p-4 rounded-2xl border-2 border-black bg-blue-200">
+            <p className="text-xs font-black text-black">COST MEDIU</p>
+            <p className="text-2xl font-black text-black">{stats.avgCost.toFixed(2)} LEI</p>
           </div>
+
+          {calculatorType === 'offline' && (
+            <>
+              <div className="p-4 rounded-2xl border-2 border-black bg-green-200">
+                <p className="text-xs font-black text-black">PREȚ MEDIU</p>
+                <p className="text-2xl font-black text-black">{stats.avgPriceOffline.toFixed(2)} LEI</p>
+              </div>
+              
+              <div className="p-4 rounded-2xl border-2 border-black bg-purple-200">
+                <p className="text-xs font-black text-black">MARJĂ MEDIE</p>
+                <p className="text-2xl font-black text-black">{stats.avgMarginOffline.toFixed(1)}%</p>
+              </div>
+            </>
+          )}
+
+          {calculatorType === 'online' && (
+            <>
+              <div className="p-4 rounded-2xl border-2 border-black bg-green-200">
+                <p className="text-xs font-black text-black">PREȚ MEDIU</p>
+                <p className="text-2xl font-black text-black">{stats.avgPriceOnline.toFixed(2)} LEI</p>
+              </div>
+              
+              <div className="p-4 rounded-2xl border-2 border-black bg-purple-200">
+                <p className="text-xs font-black text-black">MARJĂ MEDIE</p>
+                <p className="text-2xl font-black text-black">{stats.avgMarginOnline.toFixed(1)}%</p>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Category Stats */}
+      {/* Products by Category */}
       <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-black">
-        <h3 className="text-2xl font-black text-black mb-6">📈 STATISTICI PE CATEGORII</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {analytics.categoryStats.map((stat, idx) => (
-            <div 
-              key={idx}
-              className="p-6 rounded-2xl border-4 border-black bg-gradient-to-br from-[#BBDCFF] to-white"
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-2xl font-black text-black">
+            📦 PRODUSE PE CATEGORII
+          </h3>
+          <div className="flex gap-2">
+            <button
+              onClick={expandAll}
+              className="px-4 py-2 bg-green-500 text-white rounded-xl border-2 border-black font-bold hover:bg-green-600"
             >
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-4xl">{getCategoryIcon(stat.category)}</span>
-                <div>
-                  <p className="text-lg font-black text-black">{getCategoryName(stat.category)}</p>
-                  <p className="text-xs text-gray-600">{stat.count} produse</p>
-                </div>
-              </div>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="font-bold">Cost mediu:</span>
-                  <span className="font-black">{stat.avgCost.toFixed(2)} lei</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">Preț mediu:</span>
-                  <span className="font-black">{stat.avgPrice.toFixed(2)} lei</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">Marjă medie:</span>
-                  <span className="font-black text-green-600">{stat.avgMargin.toFixed(1)}%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">Vânzări totale:</span>
-                  <span className="font-black text-blue-600">{stat.totalSales}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Top Products Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Best Margin */}
-        <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-green-600">
-          <h3 className="text-xl font-black text-green-600 mb-4 flex items-center gap-2">
-            📈 TOP 5 MARJĂ
-          </h3>
-          <div className="space-y-3">
-            {analytics.bestMargin.map((p, idx) => (
-              <div 
-                key={p.id}
-                className="p-4 rounded-xl bg-green-50 border-2 border-green-600"
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <span className="text-sm font-bold text-gray-800">{p.nume}</span>
-                  <span className="px-2 py-1 bg-green-600 text-white rounded-full text-xs font-black">
-                    #{idx + 1}
-                  </span>
-                </div>
-                <div className="text-xs space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Cost:</span>
-                    <span className="font-bold">{p.pretCost.toFixed(2)} lei</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Preț {priceLabel}:</span>
-                    <span className="font-bold">{p.price.toFixed(2)} lei</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Marjă:</span>
-                    <span className="font-black text-green-600">{p.margin.toFixed(1)}%</span>
-                  </div>
-                </div>
-              </div>
-            ))}
+              ➕ DESCHIDE TOATE
+            </button>
+            <button
+              onClick={collapseAll}
+              className="px-4 py-2 bg-red-500 text-white rounded-xl border-2 border-black font-bold hover:bg-red-600"
+            >
+              ➖ ÎNCHIDE TOATE
+            </button>
           </div>
         </div>
 
-        {/* Lowest Cost */}
-        <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-blue-600">
-          <h3 className="text-xl font-black text-blue-600 mb-4 flex items-center gap-2">
-            💰 TOP 5 COST MINIM
-          </h3>
-          <div className="space-y-3">
-            {analytics.lowestCost.map((p, idx) => (
-              <div 
-                key={p.id}
-                className="p-4 rounded-xl bg-blue-50 border-2 border-blue-600"
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <span className="text-sm font-bold text-gray-800">{p.nume}</span>
-                  <span className="px-2 py-1 bg-blue-600 text-white rounded-full text-xs font-black">
-                    #{idx + 1}
-                  </span>
-                </div>
-                <div className="text-xs space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Cost:</span>
-                    <span className="font-black text-blue-600">{p.pretCost.toFixed(2)} lei</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Preț {priceLabel}:</span>
-                    <span className="font-bold">{p.price.toFixed(2)} lei</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Profit:</span>
-                    <span className="font-bold text-green-600">+{p.profit.toFixed(2)} lei</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <div className="space-y-4">
+          {Object.entries(productsByCategory).map(([category, categoryProducts]) => {
+            const cat = category as ProductCategory;
+            const categoryInfo = CATEGORIES[cat];
+            const isExpanded = expandedCategories.has(cat);
 
-        {/* Best Selling */}
-        <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-yellow-600">
-          <h3 className="text-xl font-black text-yellow-600 mb-4 flex items-center gap-2">
-            🔥 TOP 5 CELE MAI VÂNDUTE
-          </h3>
-          <div className="space-y-3">
-            {analytics.bestSelling.map((p, idx) => {
-              const sales = calculatorType === 'online' ? (p.salesOnline || 0) : (p.salesOffline || 0);
-              return (
-                <div 
-                  key={p.id}
-                  className="p-4 rounded-xl bg-yellow-50 border-2 border-yellow-600"
+            if (categoryProducts.length === 0) return null;
+
+            return (
+              <div key={cat} className="border-2 border-black rounded-2xl overflow-hidden">
+                {/* Category Header */}
+                <button
+                  onClick={() => toggleCategory(cat)}
+                  className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                  style={{ backgroundColor: `${categoryInfo.color}40` }}
                 >
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-sm font-bold text-gray-800">{p.nume}</span>
-                    <span className="px-2 py-1 bg-yellow-600 text-white rounded-full text-xs font-black">
-                      #{idx + 1}
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl">{categoryInfo.icon}</span>
+                    <div className="text-left">
+                      <p className="text-lg font-black text-black">{categoryInfo.label}</p>
+                      <p className="text-xs font-bold text-gray-700">
+                        {categoryProducts.length} produse
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="text-xs font-bold text-gray-700">COST MEDIU</p>
+                      <p className="text-lg font-black text-black">
+                        {(categoryProducts.reduce((sum, p) => sum + p.pretCost, 0) / categoryProducts.length).toFixed(2)} LEI
+                      </p>
+                    </div>
+                    <span className="text-2xl font-black text-black">
+                      {isExpanded ? '▼' : '▶'}
                     </span>
                   </div>
-                  <div className="text-xs space-y-1">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Vânzări/lună:</span>
-                      <span className="font-black text-yellow-600">{sales}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Profit/buc:</span>
-                      <span className="font-bold text-green-600">+{p.profit.toFixed(2)} lei</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Revenue total:</span>
-                      <span className="font-black text-blue-600">{(sales * p.profit).toFixed(2)} lei</span>
+                </button>
+
+                {/* Products List (Collapsible) */}
+                {isExpanded && (
+                  <div className="p-4 bg-white">
+                    <div className="space-y-2">
+                      {categoryProducts.map((product) => {
+                        const priceToUse = calculatorType === 'online' ? product.pretOnline : product.pretOffline;
+                        const margin = ((priceToUse - product.pretCost) / product.pretCost) * 100;
+
+                        return (
+                          <div 
+                            key={product.id}
+                            className="flex justify-between items-center p-3 rounded-xl border-2 border-gray-200 hover:border-black transition-all"
+                          >
+                            <div className="flex-1">
+                              <p className="text-sm font-black text-black">{product.nume}</p>
+                              <p className="text-xs font-bold text-gray-700">{product.cantitate}</p>
+                            </div>
+                            
+                            <div className="flex gap-4 items-center">
+                              <div className="text-right">
+                                <p className="text-xs font-bold text-gray-700">COST</p>
+                                <p className="text-sm font-black text-black">{product.pretCost.toFixed(2)} lei</p>
+                              </div>
+                              
+                              <div className="text-right">
+                                <p className="text-xs font-bold text-gray-700">PREȚ</p>
+                                <p className="text-sm font-black text-black">{priceToUse.toFixed(2)} lei</p>
+                              </div>
+                              
+                              <div className="text-right min-w-[80px]">
+                                <p className="text-xs font-bold text-gray-700">MARJĂ</p>
+                                <p className={`text-sm font-black ${
+                                  margin >= 100 ? 'text-green-600' : 
+                                  margin >= 50 ? 'text-yellow-600' : 'text-red-600'
+                                }`}>
+                                  {margin.toFixed(1)}%
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* All Products by Category */}
-      <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-black">
-        <h3 className="text-2xl font-black text-black mb-6">📋 TOATE PRODUSELE</h3>
-        <div className="space-y-6">
-          {Object.entries(analytics.byCategory).map(([category, items]) => (
-            <div key={category}>
-              <div className="flex items-center gap-3 mb-4 p-3 bg-[#FFC857] rounded-xl border-2 border-black">
-                <span className="text-3xl">{getCategoryIcon(category)}</span>
-                <h4 className="text-lg font-black text-black">
-                  {getCategoryName(category)} ({items.length})
-                </h4>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {items.filter(p => p.isActive).map(product => {
-                  const price = calculatorType === 'online' ? product.pretOnline : product.pretOffline;
-                  const profit = price - product.pretCost;
-                  const margin = (profit / product.pretCost) * 100;
-                  const sales = calculatorType === 'online' ? (product.salesOnline || 0) : (product.salesOffline || 0);
-                  
-                  return (
-                    <div 
-                      key={product.id}
-                      className="p-4 rounded-xl border-2 border-gray-300 bg-gray-50 hover:shadow-lg transition-shadow"
-                    >
-                      <p className="font-bold text-gray-800 mb-2">{product.nume}</p>
-                      <p className="text-xs text-gray-600 mb-3">{product.cantitate}</p>
-                      <div className="space-y-1 text-xs">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Cost:</span>
-                          <span className="font-bold">{product.pretCost.toFixed(2)} lei</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Preț {priceLabel}:</span>
-                          <span className="font-bold">{price.toFixed(2)} lei</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Marjă:</span>
-                          <span className="font-bold text-green-600">{margin.toFixed(1)}%</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Vânzări:</span>
-                          <span className="font-bold text-blue-600">{sales}/lună</span>
-                        </div>
+      {/* Best Performers */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Highest Margin Products */}
+        <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-black">
+          <h3 className="text-xl font-black mb-4 text-black">
+            🏆 CEL MAI MARE PROFIT
+          </h3>
+          <div className="space-y-3">
+            {products
+              .filter(p => p.isActive)
+              .sort((a, b) => {
+                const priceA = calculatorType === 'online' ? a.pretOnline : a.pretOffline;
+                const priceB = calculatorType === 'online' ? b.pretOnline : b.pretOffline;
+                const marginA = ((priceA - a.pretCost) / a.pretCost) * 100;
+                const marginB = ((priceB - b.pretCost) / b.pretCost) * 100;
+                return marginB - marginA;
+              })
+              .slice(0, 5)
+              .map((product, index) => {
+                const price = calculatorType === 'online' ? product.pretOnline : product.pretOffline;
+                const margin = ((price - product.pretCost) / product.pretCost) * 100;
+                
+                return (
+                  <div key={product.id} className="p-3 rounded-xl border-2 border-black bg-green-100">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <span className="text-xs font-black text-black">#{index + 1}</span>
+                        <p className="text-sm font-black text-black">{product.nume}</p>
+                        <p className="text-xs font-bold text-gray-700">
+                          {getCategoryLabel(product.category)}
+                        </p>
                       </div>
+                      <p className="text-xl font-black text-green-600">{margin.toFixed(1)}%</p>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+
+        {/* Lowest Cost Products */}
+        <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-black">
+          <h3 className="text-xl font-black mb-4 text-black">
+            💰 CEL MAI MIC COST
+          </h3>
+          <div className="space-y-3">
+            {products
+              .filter(p => p.isActive)
+              .sort((a, b) => a.pretCost - b.pretCost)
+              .slice(0, 5)
+              .map((product, index) => (
+                <div key={product.id} className="p-3 rounded-xl border-2 border-black bg-blue-100">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="text-xs font-black text-black">#{index + 1}</span>
+                      <p className="text-sm font-black text-black">{product.nume}</p>
+                      <p className="text-xs font-bold text-gray-700">
+                        {getCategoryLabel(product.category)}
+                      </p>
+                    </div>
+                    <p className="text-xl font-black text-blue-600">{product.pretCost.toFixed(2)} lei</p>
+                  </div>
+                </div>
+              ))}
+          </div>
         </div>
       </div>
     </div>

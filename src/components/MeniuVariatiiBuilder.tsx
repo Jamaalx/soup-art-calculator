@@ -2,10 +2,12 @@
 
 import React, { useState, useMemo } from 'react';
 import type { Product, ProductCategory, MenuCombination } from '@/types';
+import { CATEGORIES, getCategoryIcon, getCategoryLabel } from '@/lib/data/categories';
 
 interface CategorySlot {
   id: string;
   category: ProductCategory;
+  selectedProducts: string[]; // Array of product IDs
 }
 
 interface MeniuVariatiiBuilderProps {
@@ -13,447 +15,496 @@ interface MeniuVariatiiBuilderProps {
   calculatorType: 'online' | 'offline' | 'catering';
 }
 
-interface CategorySlot {
-  id: string;
-  category: ProductCategory;
-}
-
 const MeniuVariatiiBuilder: React.FC<MeniuVariatiiBuilderProps> = ({ products, calculatorType }) => {
   
   const [categorySlots, setCategorySlots] = useState<CategorySlot[]>([]);
-  const [selectedProducts, setSelectedProducts] = useState<Record<string, string[]>>({});
-  const [showResults, setShowResults] = useState(false);
-  const [sortBy, setSortBy] = useState<'margin' | 'profit' | 'cost'>('margin');
-  const [pretVanzare, setPretVanzare] = useState<number>(35);
+  const [menuPrice, setMenuPrice] = useState<number>(35);
+  const [generatedCombinations, setGeneratedCombinations] = useState<MenuCombination[]>([]);
+  const [sortBy, setSortBy] = useState<'marjaProfit' | 'profit' | 'costTotal'>('marjaProfit');
 
-  // Group products by category
+  // Online calculator costs
+  const AMBALAJ_COST = 3.0; // 3 lei per menu
+  const APP_COMMISSION = 0.363; // 36.3%
+  
+  const availableCategories: ProductCategory[] = [
+    'ciorbe', 'felPrincipal', 'garnituri', 'desert', 'salate', 
+    'bauturi', 'vinuri', 'placinte'
+  ];
+
   const productsByCategory = useMemo(() => {
-    return products.reduce((acc, p) => {
-      if (!acc[p.category]) acc[p.category] = [];
-      if (p.isActive) acc[p.category].push(p);
-      return acc;
-    }, {} as Record<ProductCategory, Product[]>);
+    const grouped: Record<ProductCategory, Product[]> = {} as Record<ProductCategory, Product[]>;
+    availableCategories.forEach(cat => {
+      grouped[cat] = products.filter(p => p.category === cat && p.isActive);
+    });
+    return grouped;
   }, [products]);
 
-  const availableCategories = Object.keys(productsByCategory) as ProductCategory[];
+  const handleAddCategory = (category: ProductCategory) => {
+    setCategorySlots(prev => [...prev, { 
+      id: `${category}-${Date.now()}`, 
+      category,
+      selectedProducts: []
+    }]);
+  };
 
-  // Generate all combinations
-  const combinations = useMemo<MenuCombination[]>(() => {
-    if (categorySlots.length === 0 || !showResults) return [];
+  const handleRemoveSlot = (slotId: string) => {
+    setCategorySlots(prev => prev.filter(s => s.id !== slotId));
+  };
 
-    const selectedBySlot: Record<string, Product[]> = {};
-    
-    categorySlots.forEach(slot => {
-      const productIds = selectedProducts[slot.id] || [];
-      selectedBySlot[slot.id] = products.filter(p => productIds.includes(p.id));
-    });
+  const handleToggleProduct = (slotId: string, productId: string) => {
+    setCategorySlots(prev => prev.map(slot => {
+      if (slot.id !== slotId) return slot;
+      
+      const isSelected = slot.selectedProducts.includes(productId);
+      return {
+        ...slot,
+        selectedProducts: isSelected
+          ? slot.selectedProducts.filter(id => id !== productId)
+          : [...slot.selectedProducts, productId]
+      };
+    }));
+  };
 
-    // Generate cartesian product
-    const generate = (slots: CategorySlot[], index: number, current: Product[]): MenuCombination[] => {
+  const handleSelectAll = (slotId: string) => {
+    setCategorySlots(prev => prev.map(slot => {
+      if (slot.id !== slotId) return slot;
+      const allProducts = productsByCategory[slot.category]?.map(p => p.id) || [];
+      return {
+        ...slot,
+        selectedProducts: allProducts
+      };
+    }));
+  };
+
+  const handleDeselectAll = (slotId: string) => {
+    setCategorySlots(prev => prev.map(slot => {
+      if (slot.id !== slotId) return slot;
+      return { ...slot, selectedProducts: [] };
+    }));
+  };
+
+  const totalSelectedProducts = useMemo(() => {
+    return categorySlots.reduce((sum, slot) => sum + slot.selectedProducts.length, 0);
+  }, [categorySlots]);
+
+  const handleGenerateCombinations = () => {
+    const validSlots = categorySlots.filter(slot => slot.selectedProducts.length > 0);
+    if (validSlots.length < 2) {
+      alert('Te rog adaugă minimum 2 categorii cu produse selectate!');
+      return;
+    }
+
+    const generateCombinations = (slots: CategorySlot[], index: number, current: Product[]): MenuCombination[] => {
       if (index === slots.length) {
-        const totalCost = current.reduce((sum, p) => sum + p.pretCost, 0);
-        const totalPrice = current.reduce((sum, p) => {
-          const price = calculatorType === 'online' ? p.pretOnline : p.pretOffline;
-          return sum + price;
-        }, 0);
-        const profit = totalPrice - totalCost;
-        const marjaProfit = totalCost > 0 ? (profit / totalCost) * 100 : 0;
+        if (current.length < 2) return [];
+        
+        // Calculate food cost
+        const foodCost = current.reduce((sum, p) => sum + p.pretCost, 0);
+        
+        // Calculate total cost based on calculator type
+        let costTotal = foodCost;
+        if (calculatorType === 'online') {
+          const AMBALAJ_COST = 3.0;
+          const appCommissionAmount = menuPrice * APP_COMMISSION;
+          costTotal = foodCost + AMBALAJ_COST + appCommissionAmount;
+        }
+        // For offline/catering: costTotal = foodCost (no extra costs)
+        
+        // Calculate individual price (what customer would pay separately)
+        const pretIndividual = current.reduce((sum, p) => 
+          sum + (calculatorType === 'online' ? p.pretOnline : p.pretOffline), 0);
+        
+        // Profit and margin
+        const profit = menuPrice - costTotal;
+        const marjaProfit = (profit / costTotal) * 100;
+        
+        // Discount for customer
+        const discount = pretIndividual - menuPrice;
+        const discountPercent = (discount / pretIndividual) * 100;
 
         return [{
-          products: current.map(p => ({
-            category: p.category,
-            productId: p.id,
-            productName: p.nume,
-            price: calculatorType === 'online' ? p.pretOnline : p.pretOffline
-          })),
-          totalCost,
-          totalPrice,
+          products: [...current],
+          costTotal,
+          pretIndividual,
+          pretMeniu: menuPrice,
           profit,
-          marjaProfit
+          marjaProfit,
+          discount,
+          discountPercent
         }];
       }
 
-      const slot = slots[index];
-      const slotProducts = selectedBySlot[slot.id] || [];
+      const slot = validSlots[index];
       const results: MenuCombination[] = [];
 
-      for (const product of slotProducts) {
-        results.push(...generate(slots, index + 1, [...current, product]));
+      for (const productId of slot.selectedProducts) {
+        const product = products.find(p => p.id === productId);
+        if (product) {
+          const combos = generateCombinations(slots, index + 1, [...current, product]);
+          results.push(...combos);
+        }
       }
 
       return results;
     };
 
-    const allCombinations = generate(categorySlots, 0, []);
+    const allCombos = generateCombinations(validSlots, 0, []);
     
     // Sort combinations
-    return allCombinations.sort((a, b) => {
-      if (sortBy === 'margin') return b.marjaProfit - a.marjaProfit;
+    const sorted = allCombos.sort((a, b) => {
+      if (sortBy === 'marjaProfit') return b.marjaProfit - a.marjaProfit;
       if (sortBy === 'profit') return b.profit - a.profit;
-      return a.totalCost - b.totalCost;
-    });
-  }, [categorySlots, selectedProducts, products, calculatorType, showResults, sortBy]);
+      return a.costTotal - b.costTotal;
+    }).slice(0, 100); // Show only top 100
+
+    setGeneratedCombinations(sorted);
+  };
+
+  const handleReset = () => {
+    setCategorySlots([]);
+    setGeneratedCombinations([]);
+    setMenuPrice(35);
+  };
 
   const stats = useMemo(() => {
-    if (combinations.length === 0) {
-      return {
-        total: 0,
-        avgMargin: 0,
-        avgProfit: 0,
-        avgCost: 0,
-        avgPrice: 0,
-        profitabile: 0
-      };
-    }
+    if (generatedCombinations.length === 0) return null;
 
-    const total = combinations.length;
-    const avgMargin = combinations.reduce((sum, c) => sum + c.marjaProfit, 0) / total;
-    const avgProfit = combinations.reduce((sum, c) => sum + c.profit, 0) / total;
-    const avgCost = combinations.reduce((sum, c) => sum + c.totalCost, 0) / total;
-    const avgPrice = combinations.reduce((sum, c) => sum + c.totalPrice, 0) / total;
-    const profitabile = combinations.filter(c => c.marjaProfit >= 100).length;
+    const marje = generatedCombinations.map(c => c.marjaProfit);
+    const profituri = generatedCombinations.map(c => c.profit);
+    const costuri = generatedCombinations.map(c => c.costTotal);
 
-    return { total, avgMargin, avgProfit, avgCost, avgPrice, profitabile };
-  }, [combinations]);
-
-  const handleAddCategorySlot = (category: ProductCategory) => {
-    const newSlot: CategorySlot = {
-      id: `slot-${Date.now()}-${Math.random()}`,
-      category
+    return {
+      totalCombinations: generatedCombinations.length,
+      marjaMin: Math.min(...marje),
+      marjaMax: Math.max(...marje),
+      marjaMedie: marje.reduce((a, b) => a + b, 0) / marje.length,
+      profitMediu: profituri.reduce((a, b) => a + b, 0) / profituri.length,
+      costMediu: costuri.reduce((a, b) => a + b, 0) / costuri.length,
+      profitabile: generatedCombinations.filter(c => c.marjaProfit >= 100).length
     };
-    setCategorySlots([...categorySlots, newSlot]);
-  };
-
-  const handleRemoveCategorySlot = (slotId: string) => {
-    setCategorySlots(categorySlots.filter(s => s.id !== slotId));
-    const newSelected = { ...selectedProducts };
-    delete newSelected[slotId];
-    setSelectedProducts(newSelected);
-  };
-
-  const handleToggleProduct = (slotId: string, productId: string) => {
-    const current = selectedProducts[slotId] || [];
-    const newProducts = current.includes(productId)
-      ? current.filter(id => id !== productId)
-      : [...current, productId];
-    
-    setSelectedProducts({
-      ...selectedProducts,
-      [slotId]: newProducts
-    });
-  };
-
-  const handleSelectAllInSlot = (slotId: string, category: ProductCategory) => {
-    const allIds = productsByCategory[category].map(p => p.id);
-    setSelectedProducts({
-      ...selectedProducts,
-      [slotId]: allIds
-    });
-  };
-
-  const handleGenerateCombinations = () => {
-    if (categorySlots.length < 2) {
-      alert('Adaugă minimum 2 categorii!');
-      return;
-    }
-    
-    const hasProducts = categorySlots.every(slot => (selectedProducts[slot.id]?.length || 0) > 0);
-    if (!hasProducts) {
-      alert('Selectează cel puțin un produs din fiecare categorie!');
-      return;
-    }
-
-    setShowResults(true);
-  };
-
-  const getCategoryIcon = (category: string) => {
-    const icons: Record<string, string> = {
-      'ciorbe': '🍲',
-      'fel_Principal': '🍖',
-      'garnituri': '🥔',
-      'desert': '🍰',
-      'salate': '🥗',
-      'bauturi': '🥤',
-      'vinuri': '🍷',
-      'auxiliare': '🍞',
-      'placinte': '🥧'
-    };
-    return icons[category] || '📦';
-  };
-
-  const getCategoryName = (category: string) => {
-    const names: Record<string, string> = {
-      'ciorbe': 'Ciorbe',
-      'fel_Principal': 'Feluri Principale',
-      'garnituri': 'Garnituri',
-      'desert': 'Desert',
-      'salate': 'Salate',
-      'bauturi': 'Băuturi',
-      'vinuri': 'Vinuri',
-      'auxiliare': 'Auxiliare',
-      'placinte': 'Plăcinte'
-    };
-    return names[category] || category;
-  };
+  }, [generatedCombinations]);
 
   return (
     <div className="space-y-6">
       
-      {/* Header */}
+      {/* Step 1: Add Categories */}
       <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-black">
-        <h2 className="text-3xl font-black text-black mb-2">🎨 MENIU CU VARIAȚII - BUILDER</h2>
-        <p className="text-gray-700 font-semibold">
-          Selectează categorii și produse pentru a genera toate combinațiile posibile.
+        <h3 className="text-2xl font-black mb-4 text-black">
+          📋 PASUL 1: ADAUGĂ CATEGORII
+        </h3>
+        <p className="text-sm font-bold text-gray-700 mb-4">
+          Selectează categoriile pentru meniu (minimum 2)
         </p>
-      </div>
-
-      {/* Category Selection */}
-      <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-[#9eff55]">
-        <h3 className="text-2xl font-black text-black mb-6">1️⃣ ADAUGĂ CATEGORII (câte vrei, inclusiv duplicate)</h3>
-        <p className="text-sm font-bold text-black mb-4">
-          💡 Poți adăuga aceeași categorie de mai multe ori! Ex: 2x Ciorbă + 1x Fel Principal
-        </p>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {availableCategories.map(category => (
-            <button
-              key={category}
-              onClick={() => handleAddCategorySlot(category)}
-              className="p-6 rounded-2xl border-4 bg-white border-gray-300 hover:border-black hover:bg-[#9eff55] transition-all"
-            >
-              <div className="text-4xl mb-2">{getCategoryIcon(category)}</div>
-              <div className="font-black text-black text-sm">{getCategoryName(category)}</div>
-              <div className="text-xs text-gray-600 mt-1">
-                {productsByCategory[category]?.length || 0} produse
-              </div>
-            </button>
-          ))}
+        
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {availableCategories.map(category => {
+            const categoryInfo = CATEGORIES[category];
+            const count = productsByCategory[category]?.length || 0;
+            
+            return (
+              <button
+                key={category}
+                onClick={() => handleAddCategory(category)}
+                disabled={count === 0}
+                className="flex flex-col items-center gap-2 p-4 rounded-2xl border-4 border-black hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ backgroundColor: categoryInfo.color }}
+              >
+                <span className="text-3xl">{categoryInfo.icon}</span>
+                <span className="text-xs font-black text-black text-center">
+                  {categoryInfo.label}
+                </span>
+                <span className="text-xs font-bold text-gray-800">
+                  {count} produse
+                </span>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Show Added Category Slots */}
+        {/* Added Categories Display */}
         {categorySlots.length > 0 && (
-          <div className="mt-6 p-6 bg-[#9eff55]/20 rounded-2xl border-2 border-[#9eff55]">
-            <h4 className="font-black text-black mb-3">📋 CATEGORII ADĂUGATE ({categorySlots.length}):</h4>
+          <div className="mt-6 p-4 bg-yellow-100 rounded-2xl border-2 border-black">
+            <p className="text-sm font-black text-black mb-3">
+              CATEGORII ADĂUGATE ({categorySlots.length}) | PRODUSE: {totalSelectedProducts}
+            </p>
             <div className="flex flex-wrap gap-2">
-              {categorySlots.map((slot, idx) => (
-                <div 
-                  key={slot.id}
-                  className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border-2 border-black"
-                >
-                  <span className="text-xl">{getCategoryIcon(slot.category)}</span>
-                  <span className="font-bold text-black">{getCategoryName(slot.category)} #{idx + 1}</span>
-                  <button
-                    onClick={() => handleRemoveCategorySlot(slot.id)}
-                    className="ml-2 px-2 py-1 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700"
+              {categorySlots.map((slot, index) => {
+                const categoryInfo = CATEGORIES[slot.category];
+                return (
+                  <div 
+                    key={slot.id}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl border-2 border-black"
+                    style={{ backgroundColor: categoryInfo.color }}
                   >
-                    ✕
-                  </button>
-                </div>
-              ))}
+                    <span className="text-lg">{categoryInfo.icon}</span>
+                    <span className="text-xs font-black text-black">
+                      #{index + 1} {categoryInfo.label} ({slot.selectedProducts.length})
+                    </span>
+                    <button
+                      onClick={() => handleRemoveSlot(slot.id)}
+                      className="ml-2 px-2 py-1 bg-black text-white rounded-lg text-xs font-bold hover:bg-red-600"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
       </div>
 
-      {/* Product Selection */}
-      {categorySlots.length > 0 && (
-        <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-[#BBDCFF]">
-          <h3 className="text-2xl font-black text-black mb-6">2️⃣ SELECTEAZĂ PRODUSE</h3>
+      {/* Step 2: Select Products from Each Category */}
+      {categorySlots.length >= 2 && (
+        <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-black">
+          <h3 className="text-2xl font-black mb-4 text-black">
+            🎯 PASUL 2: SELECTEAZĂ PRODUSELE
+          </h3>
+          <p className="text-sm font-bold text-gray-700 mb-4">
+            Alege produsele din fiecare categorie (poți selecta multiple)
+          </p>
+
           <div className="space-y-6">
-            {categorySlots.map((slot, idx) => (
-              <div key={slot.id} className="border-4 border-gray-300 rounded-2xl p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <div className="flex items-center gap-3">
-                    <span className="text-3xl">{getCategoryIcon(slot.category)}</span>
-                    <h4 className="text-xl font-black text-black">
-                      {getCategoryName(slot.category)} #{idx + 1}
-                    </h4>
-                    <span className="text-sm text-gray-600">
-                      ({selectedProducts[slot.id]?.length || 0} / {productsByCategory[slot.category]?.length || 0} selectate)
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => handleSelectAllInSlot(slot.id, slot.category)}
-                    className="px-4 py-2 bg-[#9eff55] rounded-xl font-bold border-2 border-black hover:scale-105 transition-transform"
-                  >
-                    ✅ Selectează Tot
-                  </button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {productsByCategory[slot.category]?.map(product => {
-                    const isSelected = selectedProducts[slot.id]?.includes(product.id);
-                    return (
+            {categorySlots.map((slot, index) => {
+              const categoryInfo = CATEGORIES[slot.category];
+              const categoryProducts = productsByCategory[slot.category] || [];
+
+              return (
+                <div key={slot.id} className="p-4 rounded-2xl border-2 border-black" style={{ backgroundColor: `${categoryInfo.color}40` }}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{categoryInfo.icon}</span>
+                      <span className="text-sm font-black text-black">
+                        #{index + 1} {categoryInfo.label}
+                      </span>
+                      <span className="text-xs font-bold text-gray-800">
+                        ({slot.selectedProducts.length}/{categoryProducts.length} selectate)
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
                       <button
-                        key={product.id}
-                        onClick={() => handleToggleProduct(slot.id, product.id)}
-                        className={`p-4 rounded-xl border-2 text-left transition-all ${
-                          isSelected
-                            ? 'bg-[#9eff55] border-black shadow-lg'
-                            : 'bg-gray-50 border-gray-300 hover:border-black'
-                        }`}
+                        onClick={() => handleSelectAll(slot.id)}
+                        className="px-3 py-1 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600"
                       >
-                        <div className="flex justify-between items-start mb-2">
-                          <span className="font-bold text-black text-sm">{product.nume}</span>
-                          <span className="text-2xl">{isSelected ? '✅' : '⬜'}</span>
-                        </div>
-                        <div className="text-xs space-y-1">
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Cost:</span>
-                            <span className="font-bold">{product.pretCost.toFixed(2)} lei</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Preț:</span>
-                            <span className="font-bold text-blue-600">
-                              {(calculatorType === 'online' ? product.pretOnline : product.pretOffline).toFixed(2)} lei
+                        ✓ TOATE
+                      </button>
+                      <button
+                        onClick={() => handleDeselectAll(slot.id)}
+                        className="px-3 py-1 bg-red-500 text-white rounded-lg text-xs font-bold hover:bg-red-600"
+                      >
+                        ✕ NICIUNA
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {categoryProducts.map(product => {
+                      const isSelected = slot.selectedProducts.includes(product.id);
+                      return (
+                        <button
+                          key={product.id}
+                          onClick={() => handleToggleProduct(slot.id, product.id)}
+                          className={`p-3 rounded-xl border-2 text-left transition-all ${
+                            isSelected 
+                              ? 'border-black bg-green-200 font-black' 
+                              : 'border-gray-300 bg-white font-bold hover:border-black'
+                          }`}
+                        >
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-black">{product.nume}</span>
+                            <span className="text-xs font-bold text-gray-800">
+                              {product.pretCost.toFixed(2)} lei
                             </span>
                           </div>
-                        </div>
-                      </button>
-                    );
-                  })}
+                          {isSelected && (
+                            <span className="text-xs text-green-600 font-black">✓ SELECTAT</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* Generate Button */}
-      {categorySlots.length >= 2 && (
-        <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-[#FFC857]">
+      {/* Step 3: Set Price & Generate */}
+      {categorySlots.length >= 2 && totalSelectedProducts >= 2 && (
+        <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-black">
+          <h3 className="text-2xl font-black mb-4 text-black">
+            💰 PASUL 3: SETEAZĂ PREȚUL ȘI GENEREAZĂ
+          </h3>
+
+          {/* Price Slider */}
+          <div className="mb-6">
+            <label className="block text-sm font-black text-black mb-2">
+              PREȚ MENIU: {menuPrice.toFixed(2)} LEI
+            </label>
+            <input
+              type="range"
+              min="20"
+              max="80"
+              step="0.5"
+              value={menuPrice}
+              onChange={(e) => setMenuPrice(parseFloat(e.target.value))}
+              className="w-full h-4 bg-yellow-300 rounded-lg cursor-pointer border-2 border-black"
+            />
+            <div className="flex justify-between text-xs font-bold text-black mt-1">
+              <span>20 LEI</span>
+              <span>80 LEI</span>
+            </div>
+          </div>
+
+          {/* Online Cost Info */}
+          <div className="mb-6 p-4 bg-blue-100 rounded-2xl border-2 border-black">
+            <p className="text-sm font-black text-black mb-2">📦 COSTURI ONLINE INCLUSE:</p>
+            <p className="text-xs font-bold text-black">• Ambalaj: {AMBALAJ_COST.toFixed(2)} LEI / meniu</p>
+            <p className="text-xs font-bold text-black">• Comision aplicație: {(APP_COMMISSION * 100).toFixed(1)}% din preț</p>
+            <p className="text-xs font-bold text-gray-700 mt-2">
+              Total comision: {(menuPrice * APP_COMMISSION).toFixed(2)} LEI
+            </p>
+          </div>
+
+          {/* Generate Button */}
           <button
             onClick={handleGenerateCombinations}
-            className="w-full p-8 bg-[#FFC857] rounded-2xl border-4 border-black font-black text-3xl hover:scale-105 transition-transform"
+            className="w-full py-4 bg-green-500 text-white rounded-2xl border-4 border-black font-black text-lg hover:bg-green-600"
           >
             🚀 GENEREAZĂ COMBINAȚII
           </button>
         </div>
       )}
 
-      {/* Results */}
-      {showResults && combinations.length > 0 && (
+      {/* Results View */}
+      {generatedCombinations.length > 0 && (
         <>
-          {/* Stats */}
+          {/* Stats Overview */}
           <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-black">
-            <h3 className="text-2xl font-black text-black mb-6">📊 STATISTICI GENERALE</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              <div className="p-6 bg-[#9eff55] rounded-2xl border-4 border-black">
-                <p className="text-xs text-gray-700 mb-1">Total Combinații:</p>
-                <p className="text-3xl font-black text-black">{stats.total}</p>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-black text-black">
+                📊 REZULTATE COMBINAȚII
+              </h3>
+              <button
+                onClick={handleReset}
+                className="px-6 py-3 bg-red-500 text-white rounded-xl border-2 border-black font-bold hover:bg-red-600"
+              >
+                🔄 RESETEAZĂ
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="p-4 rounded-2xl border-2 border-black bg-yellow-200">
+                <p className="text-xs font-black text-black">COMBINAȚII</p>
+                <p className="text-2xl font-black text-black">{stats?.totalCombinations}</p>
               </div>
-              <div className="p-6 bg-[#BBDCFF] rounded-2xl border-4 border-black">
-                <p className="text-xs text-gray-700 mb-1">Marjă Medie:</p>
-                <p className="text-3xl font-black text-black">{stats.avgMargin.toFixed(0)}%</p>
+              <div className="p-4 rounded-2xl border-2 border-black bg-green-200">
+                <p className="text-xs font-black text-black">MARJĂ MEDIE</p>
+                <p className="text-2xl font-black text-black">{stats?.marjaMedie.toFixed(1)}%</p>
               </div>
-              <div className="p-6 bg-[#FFC857] rounded-2xl border-4 border-black">
-                <p className="text-xs text-gray-700 mb-1">Profit Mediu:</p>
-                <p className="text-3xl font-black text-black">{stats.avgProfit.toFixed(2)} lei</p>
+              <div className="p-4 rounded-2xl border-2 border-black bg-blue-200">
+                <p className="text-xs font-black text-black">PROFIT MEDIU</p>
+                <p className="text-2xl font-black text-black">{stats?.profitMediu.toFixed(2)} LEI</p>
               </div>
-              <div className="p-6 bg-white rounded-2xl border-4 border-black">
-                <p className="text-xs text-gray-700 mb-1">Cost Mediu:</p>
-                <p className="text-3xl font-black text-black">{stats.avgCost.toFixed(2)} lei</p>
-              </div>
-              <div className="p-6 bg-green-100 rounded-2xl border-4 border-green-600">
-                <p className="text-xs text-gray-700 mb-1">Profitabile (≥100%):</p>
-                <p className="text-3xl font-black text-green-600">{stats.profitabile}</p>
+              <div className="p-4 rounded-2xl border-2 border-black bg-purple-200">
+                <p className="text-xs font-black text-black">PROFITABILE</p>
+                <p className="text-2xl font-black text-black">{stats?.profitabile}</p>
               </div>
             </div>
-          </div>
 
-          {/* Sorting */}
-          <div className="bg-white rounded-3xl shadow-2xl p-6 border-4 border-black">
-            <div className="flex items-center gap-4">
-              <span className="font-black text-black">SORTEAZĂ DUPĂ:</span>
+            {/* Sort Options */}
+            <div className="flex gap-2">
               <button
-                onClick={() => setSortBy('margin')}
-                className={`px-6 py-3 rounded-xl font-bold border-2 transition-all ${
-                  sortBy === 'margin' ? 'bg-[#9eff55] border-black' : 'bg-white border-gray-300'
+                onClick={() => {
+                  setSortBy('marjaProfit');
+                  handleGenerateCombinations();
+                }}
+                className={`px-4 py-2 rounded-xl border-2 border-black font-bold ${
+                  sortBy === 'marjaProfit' ? 'bg-blue-500 text-white' : 'bg-white text-black'
                 }`}
               >
-                📈 Marjă
+                SORTEAZĂ: MARJĂ
               </button>
               <button
-                onClick={() => setSortBy('profit')}
-                className={`px-6 py-3 rounded-xl font-bold border-2 transition-all ${
-                  sortBy === 'profit' ? 'bg-[#9eff55] border-black' : 'bg-white border-gray-300'
+                onClick={() => {
+                  setSortBy('profit');
+                  handleGenerateCombinations();
+                }}
+                className={`px-4 py-2 rounded-xl border-2 border-black font-bold ${
+                  sortBy === 'profit' ? 'bg-blue-500 text-white' : 'bg-white text-black'
                 }`}
               >
-                💰 Profit
+                SORTEAZĂ: PROFIT
               </button>
               <button
-                onClick={() => setSortBy('cost')}
-                className={`px-6 py-3 rounded-xl font-bold border-2 transition-all ${
-                  sortBy === 'cost' ? 'bg-[#9eff55] border-black' : 'bg-white border-gray-300'
+                onClick={() => {
+                  setSortBy('costTotal');
+                  handleGenerateCombinations();
+                }}
+                className={`px-4 py-2 rounded-xl border-2 border-black font-bold ${
+                  sortBy === 'costTotal' ? 'bg-blue-500 text-white' : 'bg-white text-black'
                 }`}
               >
-                💵 Cost
+                SORTEAZĂ: COST
               </button>
             </div>
           </div>
 
           {/* Combinations List */}
           <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-black">
-            <h3 className="text-2xl font-black text-black mb-6">
-              📋 TOATE COMBINAȚIILE ({combinations.length})
+            <h3 className="text-2xl font-black mb-4 text-black">
+              📋 TOP {generatedCombinations.length} COMBINAȚII
             </h3>
-            <div className="space-y-3 max-h-[800px] overflow-y-auto">
-              {combinations.slice(0, 100).map((combo, idx) => (
+
+            <div className="space-y-3">
+              {generatedCombinations.map((combo, index) => (
                 <div 
-                  key={idx}
-                  className={`p-4 rounded-xl border-4 ${
-                    combo.marjaProfit >= 100 ? 'bg-green-50 border-green-600' :
-                    combo.marjaProfit >= 50 ? 'bg-yellow-50 border-yellow-600' :
-                    'bg-red-50 border-red-600'
+                  key={index}
+                  className={`p-4 rounded-2xl border-4 border-black ${
+                    combo.marjaProfit >= 100 ? 'bg-green-200' :
+                    combo.marjaProfit >= 50 ? 'bg-yellow-200' : 'bg-red-200'
                   }`}
                 >
-                  <div className="flex justify-between items-start mb-3">
+                  <div className="flex justify-between items-start mb-2">
                     <span className="px-3 py-1 bg-black text-white rounded-full text-xs font-black">
-                      #{idx + 1}
+                      #{index + 1}
                     </span>
-                    <div className="text-right">
-                      <p className={`text-xl font-black ${
-                        combo.marjaProfit >= 100 ? 'text-green-600' :
-                        combo.marjaProfit >= 50 ? 'text-yellow-600' :
-                        'text-red-600'
-                      }`}>
-                        {combo.marjaProfit.toFixed(1)}%
-                      </p>
-                      <p className="text-xs text-gray-600">marjă</p>
-                    </div>
+                    <span className="text-lg font-black text-black">
+                      {combo.marjaProfit.toFixed(1)}%
+                    </span>
                   </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <p className="text-xs font-bold text-gray-600 mb-2">PRODUSE:</p>
-                      {combo.products.map((p, i) => (
-                        <p key={i} className="text-sm font-bold text-black">
-                          • {p.productName}
-                        </p>
-                      ))}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+                    {combo.products.map((product, idx) => (
+                      <p key={idx} className="text-xs font-bold text-black">
+                        • {getCategoryLabel(product.category)}: {product.nume}
+                      </p>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-2 pt-2 border-t-2 border-black">
+                    <div className="text-center">
+                      <p className="text-xs font-bold text-gray-800">COST</p>
+                      <p className="text-sm font-black text-black">{combo.costTotal.toFixed(2)} LEI</p>
                     </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-xs">
-                        <span className="font-bold text-gray-600">Cost Total:</span>
-                        <span className="font-black text-black">{combo.totalCost.toFixed(2)} lei</span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="font-bold text-gray-600">Preț Total:</span>
-                        <span className="font-black text-blue-600">{combo.totalPrice.toFixed(2)} lei</span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="font-bold text-gray-600">Profit:</span>
-                        <span className="font-black text-green-600">+{combo.profit.toFixed(2)} lei</span>
-                      </div>
+                    <div className="text-center">
+                      <p className="text-xs font-bold text-gray-800">MENIU</p>
+                      <p className="text-sm font-black text-black">{combo.pretMeniu.toFixed(2)} LEI</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs font-bold text-gray-800">PROFIT</p>
+                      <p className={`text-sm font-black ${combo.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {combo.profit >= 0 ? '+' : ''}{combo.profit.toFixed(2)} LEI
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs font-bold text-gray-800">DISCOUNT</p>
+                      <p className="text-sm font-black text-green-600">{combo.discountPercent.toFixed(1)}%</p>
                     </div>
                   </div>
                 </div>
               ))}
-              {combinations.length > 100 && (
-                <div className="p-6 bg-yellow-50 rounded-xl border-2 border-yellow-600 text-center">
-                  <p className="font-bold text-black">
-                    📊 Se afișează primele 100 din {combinations.length} combinații
-                  </p>
-                </div>
-              )}
             </div>
           </div>
         </>
