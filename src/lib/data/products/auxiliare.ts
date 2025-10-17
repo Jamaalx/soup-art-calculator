@@ -10,7 +10,9 @@ export const AUXILIARE: Product[] = [
     pretOffline: 1.00,
     pretOnline: 5.00,
     category: 'auxiliare',
-    isActive: true
+    isActive: true,
+    salesOffline: 23,
+    salesOnline: 15
   },
   {
     id: 'aux-2',

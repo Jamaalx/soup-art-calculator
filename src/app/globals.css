@@ -2,7 +2,7 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #000000;
 }
 
 @theme inline {
@@ -15,12 +15,107 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
-    --foreground: #ededed;
+    --foreground: #ffffff;
   }
 }
 
 body {
   background: var(--background);
-  color: var(--foreground);
+  color: #000000;
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Force all text to be much darker */
+p, span, div, label, button, input, select, textarea, h1, h2, h3, h4, h5, h6 {
+  color: #000000 !important;
+}
+
+/* Override Tailwind gray classes with much darker colors */
+.text-gray-600 {
+  color: #1f2937 !important;
+}
+
+.text-gray-700 {
+  color: #111827 !important;
+}
+
+.text-gray-800 {
+  color: #000000 !important;
+}
+
+.text-black {
+  color: #000000 !important;
+}
+
+.text-white {
+  color: #ffffff !important;
+}
+
+/* Colored text should remain colored */
+.text-blue-600 {
+  color: #2563eb !important;
+}
+
+.text-green-600 {
+  color: #16a34a !important;
+}
+
+.text-red-600 {
+  color: #dc2626 !important;
+}
+
+.text-yellow-600 {
+  color: #ca8a04 !important;
+}
+
+.text-purple-600 {
+  color: #9333ea !important;
+}
+
+/* Ensure links and buttons are visible */
+a {
+  color: #2563eb !important;
+}
+
+button {
+  color: #000000 !important;
+}
+
+/* White text should stay white on dark backgrounds */
+.bg-black *,
+.bg-black .text-white,
+.bg-black span,
+.bg-black p,
+.bg-black button,
+.bg-black div,
+.bg-black label,
+.bg-black a {
+  color: #ffffff !important;
+}
+
+/* Also apply to any dark background colors */
+.bg-blue-600 *,
+.bg-green-600 *,
+.bg-red-600 *,
+.bg-purple-600 *,
+.bg-gray-800 *,
+.bg-gray-900 * {
+  color: #ffffff !important;
+}
+
+/* Bordered elements with black borders that are clickable */
+.border-black.bg-black *,
+[class*="bg-black"] * {
+  color: #ffffff !important;
+}
+
+/* Specific fix for navigation items */
+nav .bg-black *,
+header .bg-black * {
+  color: #ffffff !important;
+}
+
+/* Specific overrides for light backgrounds */
+.bg-white *:not(.text-blue-600):not(.text-green-600):not(.text-red-600):not(.text-yellow-600):not(.text-purple-600) {
+  color: #000000 !important;
 }

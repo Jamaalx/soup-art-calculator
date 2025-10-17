@@ -1,7 +1,7 @@
 import { Product } from '@/types';
 
 // Main courses only (meat/protein dishes)
-export const FEL_PRINCIPAL: Product[] = [
+export const FELPRINCIPAL: Product[] = [
   {
     id: 'fel-1',
     nume: 'Mazare cu pui',

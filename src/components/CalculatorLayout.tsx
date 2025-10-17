@@ -3,8 +3,8 @@
 import React, { useState } from 'react';
 import MenuCalculator from './MenuCalculator';
 import MenuOfflineCalculator from './MenuOfflineCalculator';
-import MenuFixCalculator from './MenuFixCalculator';
 import MenuCateringCalculator from './MenuCateringCalculator';
+import MenuFixBuilder from './MenuFixBuilder';
 
 type CalculatorType = 'online' | 'offline' | 'fix' | 'catering';
 
@@ -67,7 +67,6 @@ const CalculatorLayout = () => {
       <div className="animate-fadeIn">
         {activeTab === 'online' && <MenuCalculator />}
         {activeTab === 'offline' && <MenuOfflineCalculator />}
-        {activeTab === 'fix' && <MenuFixCalculator />}
         {activeTab === 'catering' && <MenuCateringCalculator />}
       </div>
 

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext } from 'react';
-import { useProducts } from '@/hooks/useProducts';
+import { useProducts } from '@/hooks/useUserProducts';
 import type { Product } from '@/types';
 
 interface ProductsContextType {

@@ -1,321 +1,327 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { getProductsByCategory } from '@/lib/data/products';
-import { MENU_COSTS } from '@/lib/data/constants';
+import { CIORBE, FELPRINCIPAL as FEL_PRINCIPAL, GARNITURI, DESERT, BAUTURI, AUXILIARE } from '@/lib/data/products';
+import type { Product, ProductCategory } from '@/types';
+
+// Helper function to get products by category
+const getProductsByCategory = (category: ProductCategory): Product[] => {
+  switch(category) {
+    case 'ciorbe':
+      return CIORBE;
+    case 'felPrincipal':
+      return FEL_PRINCIPAL;
+    case 'garnituri':
+      return GARNITURI;
+    case 'desert':
+      return DESERT;
+    case 'bauturi':
+      return BAUTURI;
+    case 'auxiliare':
+      return AUXILIARE;
+    default:
+      return [];
+  }
+};
+
+interface MenuCateringSimulation {
+  ciorba?: string;
+  felPrincipal: string;
+  garnitura: string;
+  desert?: string;
+  bautura?: string;
+  auxiliare?: string[];
+  costTotal: number;
+  pretMeniu: number;
+  profit: number;
+  marjaProfit: number;
+  items: string[];
+}
 
 const MenuCateringCalculator = () => {
-  const [pretPerMeniu, setPretPerMeniu] = useState<number>(35);
-  const [numarPersonae, setNumarPersonae] = useState<number>(50);
-  const [selectedProducts, setSelectedProducts] = useState<{
-    ciorba?: string;
-    felPrincipal?: string;
-    garnitura?: string;
-  }>({});
+  const [pretVanzare, setPretVanzare] = useState<number>(45);
+  const [includeDesert, setIncludeDesert] = useState<boolean>(true);
+  const [includeBautura, setIncludeBautura] = useState<boolean>(true);
+  const [numarAuxiliare, setNumarAuxiliare] = useState<number>(2);
 
-  const products = useMemo(() => getProductsByCategory, []);
+  // Get products using the helper function
+  const ciorbe = getProductsByCategory('ciorbe');
+  const felPrincipal = getProductsByCategory('felPrincipal');
+  const garnituri = getProductsByCategory('garnituri');
+  const deserturi = getProductsByCategory('desert');
+  const bauturi = getProductsByCategory('bauturi');
+  const auxiliare = getProductsByCategory('auxiliare');
 
-  const selectedProductDetails = useMemo(() => {
-    const details: any = {};
-    if (selectedProducts.ciorba) {
-      details.ciorba = products.ciorbe.find(p => p.id === selectedProducts.ciorba);
+  const COSTURI_FIXE = 5.0; // Higher fixed costs for catering
+
+  const calculateMenu = (
+    ciorba: Product,
+    fel: Product,
+    garnitura: Product,
+    desert?: Product,
+    bautura?: Product,
+    aux: Product[] = []
+  ): MenuCateringSimulation => {
+    let costTotal = ciorba.pretCost + fel.pretCost + garnitura.pretCost + COSTURI_FIXE;
+    const items = [ciorba.nume, fel.nume, garnitura.nume];
+
+    if (desert) {
+      costTotal += desert.pretCost;
+      items.push(desert.nume);
     }
-    if (selectedProducts.felPrincipal) {
-      details.felPrincipal = products.fel_Principal.find(p => p.id === selectedProducts.felPrincipal);
+    if (bautura) {
+      costTotal += bautura.pretCost;
+      items.push(bautura.nume);
     }
-    if (selectedProducts.garnitura) {
-      details.garnitura = products.garnituri.find(p => p.id === selectedProducts.garnitura);
-    }
-    return details;
-  }, [selectedProducts, products]);
+    aux.forEach(a => {
+      costTotal += a.pretCost;
+      items.push(a.nume);
+    });
 
-  const calculation = useMemo(() => {
-    if (!selectedProductDetails.ciorba || !selectedProductDetails.felPrincipal || !selectedProductDetails.garnitura) {
-      return null;
-    }
-
-    // Volume discount
-    let discount = 0;
-    if (numarPersonae >= 200) discount = 0.15;
-    else if (numarPersonae >= 100) discount = 0.10;
-    else if (numarPersonae >= 50) discount = 0.05;
-
-    const costPerMeniu = 
-      selectedProductDetails.ciorba.pretCost +
-      selectedProductDetails.felPrincipal.pretCost +
-      selectedProductDetails.garnitura.pretCost;
-
-    const pretCuDiscount = pretPerMeniu * (1 - discount);
-    
-    // Additional costs
-    const costTransport = 200; // flat fee
-    const costPersonal = Math.ceil(numarPersonae / 25) * 150; // 1 staff per 25 people
-    const costEchipament = numarPersonae * 5; // 5 lei per person
-    
-    const totalCosturiAdditionale = costTransport + costPersonal + costEchipament;
-    const costuriAditionalePerMeniu = totalCosturiAdditionale / numarPersonae;
-    
-    const costTotalPerMeniu = costPerMeniu + costuriAditionalePerMeniu;
-    const profitPerMeniu = pretCuDiscount - costTotalPerMeniu;
-    const profitTotal = profitPerMeniu * numarPersonae;
-    const marjaProfit = (profitPerMeniu / costTotalPerMeniu) * 100;
+    const profit = pretVanzare - costTotal;
+    const marjaProfit = (profit / costTotal) * 100;
 
     return {
-      costPerMeniu,
-      discount,
-      pretCuDiscount,
-      costTransport,
-      costPersonal,
-      costEchipament,
-      totalCosturiAdditionale,
-      costuriAditionalePerMeniu,
-      costTotalPerMeniu,
-      profitPerMeniu,
-      profitTotal,
+      ciorba: ciorba.nume,
+      felPrincipal: fel.nume,
+      garnitura: garnitura.nume,
+      desert: desert?.nume,
+      bautura: bautura?.nume,
+      auxiliare: aux.map(a => a.nume),
+      costTotal,
+      pretMeniu: pretVanzare,
+      profit,
       marjaProfit,
-      pretTotal: pretCuDiscount * numarPersonae,
+      items
     };
-  }, [selectedProductDetails, pretPerMeniu, numarPersonae]);
+  };
+
+  const simulari = useMemo<MenuCateringSimulation[]>(() => {
+    const result: MenuCateringSimulation[] = [];
+    
+    // Limit combinations to prevent infinite loops
+    const maxCombinations = 1000;
+    let count = 0;
+
+    for (const ciorba of ciorbe) {
+      for (const fel of felPrincipal) {
+        for (const garnitura of garnituri) {
+          if (count >= maxCombinations) break;
+
+          if (includeDesert && includeBautura && deserturi.length > 0 && bauturi.length > 0) {
+            // Take only first few items to limit combinations
+            const limitedDeserturi = deserturi.slice(0, 3);
+            const limitedBauturi = bauturi.slice(0, 3);
+            
+            for (const desert of limitedDeserturi) {
+              for (const bautura of limitedBauturi) {
+                if (count >= maxCombinations) break;
+                
+                if (numarAuxiliare > 0 && auxiliare.length >= numarAuxiliare) {
+                  const selectedAux = auxiliare.slice(0, numarAuxiliare);
+                  result.push(calculateMenu(ciorba, fel, garnitura, desert, bautura, selectedAux));
+                } else {
+                  result.push(calculateMenu(ciorba, fel, garnitura, desert, bautura));
+                }
+                count++;
+              }
+            }
+          } else if (includeDesert && deserturi.length > 0) {
+            const limitedDeserturi = deserturi.slice(0, 5);
+            for (const desert of limitedDeserturi) {
+              if (count >= maxCombinations) break;
+              result.push(calculateMenu(ciorba, fel, garnitura, desert));
+              count++;
+            }
+          } else if (includeBautura && bauturi.length > 0) {
+            const limitedBauturi = bauturi.slice(0, 5);
+            for (const bautura of limitedBauturi) {
+              if (count >= maxCombinations) break;
+              result.push(calculateMenu(ciorba, fel, garnitura, undefined, bautura));
+              count++;
+            }
+          } else {
+            result.push(calculateMenu(ciorba, fel, garnitura));
+            count++;
+          }
+        }
+      }
+    }
+    
+    return result;
+  }, [pretVanzare, includeDesert, includeBautura, numarAuxiliare]); // FIXED: Removed products from dependencies
+
+  const stats = useMemo(() => {
+    if (simulari.length === 0) {
+      return {
+        costMin: 0,
+        costMax: 0,
+        costMediu: 0,
+        profitMediu: 0,
+        marjaMin: 0,
+        marjaMax: 0,
+        marjaMedie: 0,
+        profitabile: 0,
+      };
+    }
+
+    const costuri = simulari.map(s => s.costTotal);
+    const profituri = simulari.map(s => s.profit);
+    const marje = simulari.map(s => s.marjaProfit);
+    
+    return {
+      costMin: Math.min(...costuri),
+      costMax: Math.max(...costuri),
+      costMediu: costuri.reduce((a, b) => a + b, 0) / costuri.length,
+      profitMediu: profituri.reduce((a, b) => a + b, 0) / profituri.length,
+      marjaMin: Math.min(...marje),
+      marjaMax: Math.max(...marje),
+      marjaMedie: marje.reduce((a, b) => a + b, 0) / marje.length,
+      profitabile: simulari.filter(s => s.marjaProfit >= 100).length,
+    };
+  }, [simulari]);
+
+  const topMeniuri = useMemo(() => {
+    if (simulari.length === 0) {
+      return { top: [], bottom: [] };
+    }
+    const sorted = [...simulari].sort((a, b) => b.marjaProfit - a.marjaProfit);
+    return {
+      top: sorted.slice(0, 5),
+      bottom: sorted.slice(-5).reverse()
+    };
+  }, [simulari]);
 
   return (
-    <div>
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
-        body {
-          font-family: 'Montserrat', sans-serif;
-        }
-      `}</style>
-
-      {/* Header */}
-      <div className="bg-white rounded-3xl shadow-2xl p-8 mb-6 border-4 border-black">
-        <span className="inline-block px-4 py-2 bg-[#FFB6C1] rounded-full text-black text-sm font-bold mb-3 border-2 border-black">
-          🎉 CALCULATOR CATERING - EVENIMENTE
-        </span>
-        <h1 className="text-4xl md:text-5xl font-black text-black mb-2 tracking-tight">
-          CATERING CORPORATE
-        </h1>
-        <p className="text-gray-700 font-semibold">
-          Evenimente 10-500 persoane cu reduceri pe volum
-        </p>
-        <p className="text-sm text-gray-600 font-semibold mt-2">
-          Include: Transport + Personal + Echipamente
-        </p>
-      </div>
-
-      {/* Settings */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {/* Price Control */}
-        <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-black">
-          <h2 className="text-xl font-black mb-4 text-black">💰 PREȚ PER MENIU</h2>
-          <div className="text-center mb-4">
-            <div className="inline-block px-6 py-4 bg-[#BBDCFF] rounded-2xl shadow-xl border-4 border-black">
-              <p className="text-3xl font-black text-black">{pretPerMeniu.toFixed(2)} LEI</p>
-            </div>
-          </div>
-          <input 
-            type="range" 
-            min="20" 
-            max="100" 
-            step="0.5" 
-            value={pretPerMeniu} 
-            onChange={(e) => setPretPerMeniu(parseFloat(e.target.value))}
-            className="w-full h-4 bg-[#9eff55] rounded-lg cursor-pointer border-2 border-black"
-          />
-          <div className="flex justify-between text-xs font-bold text-black mt-2">
-            <span>20</span>
-            <span>100</span>
-          </div>
-        </div>
-
-        {/* People Count */}
-        <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-black">
-          <h2 className="text-xl font-black mb-4 text-black">👥 NUMĂR PERSOANE</h2>
-          <div className="text-center mb-4">
-            <div className="inline-block px-6 py-4 bg-[#FFC857] rounded-2xl shadow-xl border-4 border-black">
-              <p className="text-3xl font-black text-black">{numarPersonae}</p>
-            </div>
-          </div>
-          <input 
-            type="range" 
-            min="10" 
-            max="500" 
-            step="5" 
-            value={numarPersonae} 
-            onChange={(e) => setNumarPersonae(parseInt(e.target.value))}
-            className="w-full h-4 bg-[#FFB6C1] rounded-lg cursor-pointer border-2 border-black"
-          />
-          <div className="flex justify-between text-xs font-bold text-black mt-2">
-            <span>10</span>
-            <span>500</span>
-          </div>
-          
-          {/* Discount Badge */}
-          {numarPersonae >= 50 && (
-            <div className="mt-4 text-center">
-              <span className="inline-block px-4 py-2 bg-[#9eff55] rounded-full text-black text-sm font-black border-2 border-black">
-                🎊 REDUCERE:{' '}
-                {numarPersonae >= 200 ? '15%' : numarPersonae >= 100 ? '10%' : '5%'}
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Product Selection */}
-      <div className="bg-white rounded-3xl shadow-2xl p-8 mb-6 border-4 border-black">
-        <h2 className="text-2xl font-black mb-6 text-black">🍽️ SELECTEAZĂ MENIUL</h2>
+    <div className="min-h-screen p-4 md:p-8 bg-gradient-to-br from-purple-50 via-white to-pink-50">
+      <div className="max-w-7xl mx-auto">
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Ciorbe */}
-          <div>
-            <label className="block text-sm font-black text-black mb-3">🍲 CIORBĂ</label>
-            <select
-              value={selectedProducts.ciorba || ''}
-              onChange={(e) => setSelectedProducts({...selectedProducts, ciorba: e.target.value})}
-              className="w-full px-4 py-3 border-4 border-black rounded-xl font-bold text-sm"
-            >
-              <option value="">Selectează...</option>
-              {products.ciorbe.map(p => (
-                <option key={p.id} value={p.id}>
-                  {p.nume} - {p.pretCost.toFixed(2)} LEI
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* Header */}
+        <div className="bg-white rounded-3xl shadow-2xl p-8 mb-6 border-4 border-purple-600">
+          <h1 className="text-4xl md:text-5xl font-black text-purple-600 mb-2 tracking-tight">
+            🍽️ CALCULATOR MENIU CATERING
+          </h1>
+          <p className="text-gray-700 font-semibold">Meniuri complete pentru evenimente B2B</p>
+        </div>
 
-          {/* Fel Principal */}
-          <div>
-            <label className="block text-sm font-black text-black mb-3">🍖 FEL PRINCIPAL</label>
-            <select
-              value={selectedProducts.felPrincipal || ''}
-              onChange={(e) => setSelectedProducts({...selectedProducts, felPrincipal: e.target.value})}
-              className="w-full px-4 py-3 border-4 border-black rounded-xl font-bold text-sm"
-            >
-              <option value="">Selectează...</option>
-              {products.felPrincipal.map(p => (
-                <option key={p.id} value={p.id}>
-                  {p.nume} - {p.pretCost.toFixed(2)} LEI
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* Configuration */}
+        <div className="bg-white rounded-3xl shadow-2xl p-8 mb-6 border-4 border-purple-600">
+          <h2 className="text-2xl font-black mb-6 text-purple-600">⚙️ CONFIGURARE MENIU</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Price Control */}
+            <div>
+              <h3 className="font-bold mb-3">Preț Vânzare</h3>
+              <div className="bg-purple-100 rounded-2xl p-4 mb-3">
+                <p className="text-3xl font-black text-purple-600">{pretVanzare.toFixed(2)} LEI</p>
+              </div>
+              <input 
+                type="range" 
+                min="30" 
+                max="80" 
+                step="1" 
+                value={pretVanzare} 
+                onChange={(e) => setPretVanzare(parseFloat(e.target.value))}
+                className="w-full"
+              />
+            </div>
 
-          {/* Garnitura */}
-          <div>
-            <label className="block text-sm font-black text-black mb-3">🥔 GARNITURĂ</label>
-            <select
-              value={selectedProducts.garnitura || ''}
-              onChange={(e) => setSelectedProducts({...selectedProducts, garnitura: e.target.value})}
-              className="w-full px-4 py-3 border-4 border-black rounded-xl font-bold text-sm"
-            >
-              <option value="">Selectează...</option>
-              {products.garnituri.map(p => (
-                <option key={p.id} value={p.id}>
-                  {p.nume} - {p.pretCost.toFixed(2)} LEI
-                </option>
-              ))}
-            </select>
+            {/* Options */}
+            <div className="space-y-4">
+              <label className="flex items-center gap-3 p-3 bg-purple-50 rounded-xl cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={includeDesert}
+                  onChange={(e) => setIncludeDesert(e.target.checked)}
+                  className="w-5 h-5"
+                />
+                <span className="font-bold">Include Desert</span>
+              </label>
+
+              <label className="flex items-center gap-3 p-3 bg-purple-50 rounded-xl cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={includeBautura}
+                  onChange={(e) => setIncludeBautura(e.target.checked)}
+                  className="w-5 h-5"
+                />
+                <span className="font-bold">Include Băutură</span>
+              </label>
+
+              <div>
+                <label className="font-bold mb-2 block">Număr Auxiliare: {numarAuxiliare}</label>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="4" 
+                  step="1" 
+                  value={numarAuxiliare} 
+                  onChange={(e) => setNumarAuxiliare(parseInt(e.target.value))}
+                  className="w-full"
+                />
+              </div>
+            </div>
           </div>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          {[
+            { icon: '📦', label: 'COMBINAȚII', value: simulari.length.toLocaleString(), color: 'bg-purple-100 border-purple-600' },
+            { icon: '📈', label: 'MARJĂ MEDIE', value: `${stats.marjaMedie.toFixed(1)}%`, color: 'bg-pink-100 border-pink-600' },
+            { icon: '💰', label: 'PROFIT MEDIU', value: `${stats.profitMediu.toFixed(2)} LEI`, color: 'bg-blue-100 border-blue-600' },
+            { icon: '✅', label: 'PROFITABILE', value: `${stats.profitabile}`, color: 'bg-green-100 border-green-600' }
+          ].map((stat, i) => (
+            <div key={i} className={`${stat.color} rounded-2xl p-6 shadow-xl border-4`}>
+              <div className="text-4xl mb-2">{stat.icon}</div>
+              <p className="text-3xl font-black text-gray-900">{stat.value}</p>
+              <p className="text-sm font-black text-gray-700">{stat.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Top Lists */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {[
+            { title: '🏆 TOP 5 PROFITABILE', items: topMeniuri.top, positive: true },
+            { title: '⚠️ TOP 5 NEPROFITABILE', items: topMeniuri.bottom, positive: false }
+          ].map((section, idx) => (
+            <div key={idx} className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-purple-600">
+              <h3 className="text-2xl font-black mb-4 text-purple-600">{section.title}</h3>
+              <div className="space-y-3">
+                {section.items.map((m, i) => (
+                  <div 
+                    key={i} 
+                    className={`p-4 rounded-2xl border-4 ${
+                      m.marjaProfit >= 100 ? 'bg-green-100 border-green-600' : 
+                      m.profit < 0 ? 'bg-red-100 border-red-600' : 
+                      'bg-yellow-100 border-yellow-600'
+                    }`}
+                  >
+                    <div className="flex justify-between mb-2">
+                      <span className="px-3 py-1 bg-purple-600 text-white rounded-full text-sm font-black">
+                        #{i+1}
+                      </span>
+                      <span className="text-lg font-black">{m.marjaProfit.toFixed(1)}%</span>
+                    </div>
+                    <div className="text-xs space-y-1">
+                      {m.items.map((item, idx) => (
+                        <p key={idx} className="font-bold">• {item}</p>
+                      ))}
+                    </div>
+                    <div className="mt-2 pt-2 border-t-2 border-gray-300 flex justify-between text-xs font-black">
+                      <span>COST: {m.costTotal.toFixed(2)} LEI</span>
+                      <span className={m.profit >= 0 ? 'text-green-600' : 'text-red-600'}>
+                        {m.profit >= 0 ? '+' : ''}{m.profit.toFixed(2)} LEI
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
-
-      {/* Results */}
-      {calculation && (
-        <>
-          {/* Cost Breakdown */}
-          <div className="bg-white rounded-3xl shadow-2xl p-8 mb-6 border-4 border-black">
-            <h2 className="text-2xl font-black mb-6 text-black">💵 DEFALCARE COSTURI</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div className="bg-[#FFC857] p-4 rounded-xl border-4 border-black">
-                <p className="text-xs font-bold text-black mb-1">COST PRODUSE/MENIU</p>
-                <p className="text-2xl font-black text-black">{calculation.costPerMeniu.toFixed(2)} LEI</p>
-              </div>
-              
-              <div className="bg-[#BBDCFF] p-4 rounded-xl border-4 border-black">
-                <p className="text-xs font-bold text-black mb-1">COSTURI ADIȚIONALE/MENIU</p>
-                <p className="text-2xl font-black text-black">{calculation.costuriAditionalePerMeniu.toFixed(2)} LEI</p>
-              </div>
-            </div>
-
-            <div className="bg-[#EBEBEB] p-6 rounded-2xl border-2 border-black mb-4">
-              <h3 className="text-sm font-black mb-3 text-black">COSTURI FIXE CATERING:</h3>
-              <div className="grid grid-cols-3 gap-3 text-sm font-bold text-black">
-                <div>
-                  <p className="text-xs opacity-75">Transport:</p>
-                  <p className="text-lg font-black">{calculation.costTransport} LEI</p>
-                </div>
-                <div>
-                  <p className="text-xs opacity-75">Personal ({Math.ceil(numarPersonae / 25)}):</p>
-                  <p className="text-lg font-black">{calculation.costPersonal} LEI</p>
-                </div>
-                <div>
-                  <p className="text-xs opacity-75">Echipament:</p>
-                  <p className="text-lg font-black">{calculation.costEchipament} LEI</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-black p-4 rounded-xl text-center">
-              <p className="text-sm font-bold text-white mb-1">COST TOTAL/MENIU</p>
-              <p className="text-3xl font-black text-white">{calculation.costTotalPerMeniu.toFixed(2)} LEI</p>
-            </div>
-          </div>
-
-          {/* Final Results */}
-          <div className="bg-gradient-to-r from-[#9eff55] to-[#FFC857] rounded-3xl shadow-2xl p-8 border-4 border-black">
-            <h2 className="text-2xl font-black mb-6 text-black text-center">📊 REZULTATE FINALE</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <div className="bg-white p-4 rounded-xl border-4 border-black text-center">
-                <p className="text-xs font-bold text-black mb-1">PREȚ/MENIU</p>
-                <p className="text-2xl font-black text-black">{calculation.pretCuDiscount.toFixed(2)} LEI</p>
-                {calculation.discount > 0 && (
-                  <p className="text-xs text-green-600 font-bold">-{(calculation.discount * 100).toFixed(0)}%</p>
-                )}
-              </div>
-              
-              <div className="bg-white p-4 rounded-xl border-4 border-black text-center">
-                <p className="text-xs font-bold text-black mb-1">PROFIT/MENIU</p>
-                <p className={`text-2xl font-black ${calculation.profitPerMeniu >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {calculation.profitPerMeniu >= 0 ? '+' : ''}{calculation.profitPerMeniu.toFixed(2)} LEI
-                </p>
-              </div>
-              
-              <div className="bg-white p-4 rounded-xl border-4 border-black text-center">
-                <p className="text-xs font-bold text-black mb-1">MARJĂ PROFIT</p>
-                <p className={`text-2xl font-black ${calculation.marjaProfit >= 100 ? 'text-green-600' : calculation.marjaProfit >= 80 ? 'text-yellow-600' : 'text-red-600'}`}>
-                  {calculation.marjaProfit.toFixed(1)}%
-                </p>
-              </div>
-              
-              <div className="bg-white p-4 rounded-xl border-4 border-black text-center">
-                <p className="text-xs font-bold text-black mb-1">PROFIT TOTAL</p>
-                <p className={`text-2xl font-black ${calculation.profitTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {calculation.profitTotal >= 0 ? '+' : ''}{calculation.profitTotal.toFixed(2)} LEI
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-black p-6 rounded-2xl text-center">
-              <p className="text-sm font-bold text-white mb-2">VALOARE TOTALĂ CONTRACT</p>
-              <p className="text-4xl font-black text-[#9eff55]">{calculation.pretTotal.toFixed(2)} LEI</p>
-              <p className="text-sm text-gray-400 font-bold mt-2">
-                {numarPersonae} persoane × {calculation.pretCuDiscount.toFixed(2)} LEI
-              </p>
-            </div>
-          </div>
-        </>
-      )}
-
-      {!calculation && (
-        <div className="bg-white rounded-3xl shadow-2xl p-12 border-4 border-black text-center">
-          <div className="text-6xl mb-4">🎊</div>
-          <p className="text-xl font-black text-gray-600">
-            Selectează toate produsele pentru calcul
-          </p>
-        </div>
-      )}
     </div>
   );
 };

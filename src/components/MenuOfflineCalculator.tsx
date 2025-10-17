@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { CIORBE, FEL_PRINCIPAL, GARNITURI } from '@/lib/data/products';
+import { CIORBE, FELPRINCIPAL, GARNITURI } from '@/lib/data/products';
 import { calculateOfflineMenu } from '@/lib/calculations/menuOffline';
 import { calculateStatistics } from '@/lib/calculations/statistics';
 import { MENU_COSTS } from '@/lib/data/constants';
@@ -26,26 +26,26 @@ const MenuOfflineCalculator = () => {
 
   // Selected products (checkboxes)
   const [selectedCiorbe, setSelectedCiorbe] = useState<Set<string>>(new Set(CIORBE.map(c => c.id)));
-  const [selectedFeluri, setSelectedFeluri] = useState<Set<string>>(new Set(FEL_PRINCIPAL.map(f => f.id)));
+  const [selectedFeluri, setSelectedFeluri] = useState<Set<string>>(new Set(FELPRINCIPAL.map(f => f.id)));
   const [selectedGarnituri, setSelectedGarnituri] = useState<Set<string>>(new Set(GARNITURI.map(g => g.id)));
 
   // Filter selected products
   const ciorbeActive = CIORBE.filter(c => selectedCiorbe.has(c.id));
-  const feluriActive = FEL_PRINCIPAL.filter(f => selectedFeluri.has(f.id));
+  const feluriActive = FELPRINCIPAL.filter(f => selectedFeluri.has(f.id));
   const garnituriActive = GARNITURI.filter(g => selectedGarnituri.has(g.id));
 
   const simulari = useMemo<Simulation[]>(() => {
     const result: Simulation[] = [];
     
     ciorbeActive.forEach(ciorba => {
-      feluriActive.forEach(fel => {
+      feluriActive.forEach(felPrincipal => {
         garnituriActive.forEach(garnitura => {
-          const products = [ciorba, fel, garnitura];
+          const products = [ciorba, felPrincipal, garnitura];
           const calc = calculateOfflineMenu(pretVanzare, products);
           
           result.push({
             ciorba: ciorba.nume,
-            felPrincipal: fel.nume,
+            felPrincipal: felPrincipal.nume,
             garnitura: garnitura.nume,
             costProduse: calc.costProduse,
             costAmbalaj: calc.costAmbalaj,
@@ -84,7 +84,7 @@ const MenuOfflineCalculator = () => {
 
   const selectAll = (category: 'ciorbe' | 'feluri' | 'garnituri') => {
     if (category === 'ciorbe') setSelectedCiorbe(new Set(CIORBE.map(c => c.id)));
-    else if (category === 'feluri') setSelectedFeluri(new Set(FEL_PRINCIPAL.map(f => f.id)));
+    else if (category === 'feluri') setSelectedFeluri(new Set(FELPRINCIPAL.map(f => f.id)));
     else setSelectedGarnituri(new Set(GARNITURI.map(g => g.id)));
   };
 
@@ -130,13 +130,12 @@ const MenuOfflineCalculator = () => {
           className={`flex justify-between p-3 ${colorClass} rounded-xl border hover:shadow-md transition-shadow`}
         >
           <div>
-            <span className="text-sm font-medium text-gray-800">{item.nume}</span>
-            <span className="text-xs text-gray-600 block">{item.cantitate}</span>
-          </div>
+  <span className="text-sm font-medium text-gray-800">{item.nume}</span>
+</div>
           <div className="text-right">
-            <span className="text-sm font-bold text-gray-900 block">{item.pretCost.toFixed(2)} lei</span>
-            <span className="text-xs text-gray-600">cost</span>
-          </div>
+  <span className="text-sm font-bold text-gray-900 block">{item.pretCost.toFixed(2)} lei</span>
+  <span className="text-xs text-gray-600">cost</span>
+</div>
         </div>
       ))}
     </div>
@@ -208,7 +207,7 @@ const MenuOfflineCalculator = () => {
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           {[
-            { icon: '📦', label: 'COMBINAȚII', value: simulari.length.toLocaleString(), sub: `${CIORBE.length}×${FEL_PRINCIPAL.length}×${GARNITURI.length}`, color: '#FFC857' },
+            { icon: '📦', label: 'COMBINAȚII', value: simulari.length.toLocaleString(), sub: `${CIORBE.length}×${FELPRINCIPAL.length}×${GARNITURI.length}`, color: '#FFC857' },
             { icon: '📈', label: 'MARJĂ MEDIE', value: `${stats.marjaMedie.toFixed(1)}%`, sub: `${stats.marjaMin.toFixed(0)}%-${stats.marjaMax.toFixed(0)}%`, color: '#9eff55' },
             { icon: '💰', label: 'PROFIT MEDIU', value: `${stats.profitMediu.toFixed(2)}`, sub: 'LEI PER MENIU', color: '#BBDCFF' },
             { icon: '✅', label: 'PROFITABILE', value: stats.profitabile, sub: `${((stats.profitabile/simulari.length)*100).toFixed(1)}%`, color: '#EBEBEB' }
@@ -242,9 +241,9 @@ const MenuOfflineCalculator = () => {
             <div>
               <div className="flex items-center gap-3 mb-4 bg-[#BBDCFF] p-3 rounded-xl border-2 border-black">
                 <div className="text-3xl">🍖</div>
-                <h3 className="text-lg font-black text-black">FELURI PRINCIPALE ({FEL_PRINCIPAL.length})</h3>
+                <h3 className="text-lg font-black text-black">FELURI PRINCIPALE ({FELPRINCIPAL.length})</h3>
               </div>
-              <ProductList products={FEL_PRINCIPAL} colorClass="bg-[#BBDCFF]/30 border-[#BBDCFF]" />
+              <ProductList products={FELPRINCIPAL} colorClass="bg-[#BBDCFF]/30 border-[#BBDCFF]" />
             </div>
 
             <div>

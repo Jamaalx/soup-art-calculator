@@ -15,65 +15,70 @@ export const CATEGORIES: Record<ProductCategory, CategoryMetadata> = {
     color: '#BBDCFF',
     description: 'Feluri principale de carne'
   },
-  garnitura: {
-    key: 'garnitura',
+  garnituri: {
+    key: 'garnituri',
     label: 'Garnituri',
     icon: '🥔',
     color: '#9eff55',
     description: 'Garnituri și acompaniamente'
   },
+  desert: {
+    key: 'desert',
+    label: 'Desert',
+    icon: '🍰',
+    color: '#FFB6C1',
+    description: 'Deserturi și dulciuri'
+  },
   salate: {
     key: 'salate',
     label: 'Salate',
     icon: '🥗',
-    color: '#98FB98',
-    description: 'Salate și murături'
-  },
-  desert: {
-    key: 'desert',
-    label: 'Deserturi',
-    icon: '🍰',
-    color: '#FFB6C1',
-    description: 'Deserturi și prăjituri'
-  },
-  placinte: {
-    key: 'placinte',
-    label: 'Plăcinte',
-    icon: '🥧',
-    color: '#DDA0DD',
-    description: 'Plăcinte tradiționale'
-  },
-  auxiliare: {
-    key: 'auxiliare',
-    label: 'Auxiliare',
-    icon: '🍞',
-    color: '#EBEBEB',
-    description: 'Sosuri, pâine, și accesorii'
+    color: '#90EE90',
+    description: 'Salate și aperitive'
   },
   bauturi: {
     key: 'bauturi',
     label: 'Băuturi',
     icon: '🥤',
     color: '#87CEEB',
-    description: 'Băuturi răcoritoare și bere'
+    description: 'Băuturi răcoritoare și sucuri'
   },
   vinuri: {
     key: 'vinuri',
-    label: 'Vinuri & Miniaturi',
+    label: 'Vinuri',
     icon: '🍷',
-    color: '#DEB887',
-    description: 'Vinuri și băuturi alcoolice'
+    color: '#DDA0DD',
+    description: 'Vinuri roșii și albe'
+  },
+  auxiliare: {
+    key: 'auxiliare',
+    label: 'Auxiliare',
+    icon: '🍞',
+    color: '#F5DEB3',
+    description: 'Pâine și produse auxiliare'
+  },
+  placinte: {
+    key: 'placinte',
+    label: 'Plăcinte',
+    icon: '🥧',
+    color: '#FFE4B5',
+    description: 'Plăcinte tradiționale'
   }
 };
 
-export const getCategoryColor = (category: ProductCategory): string => {
-  return CATEGORIES[category]?.color || '#EBEBEB';
-};
+// Helper functions
+export function getCategoryMetadata(category: ProductCategory): CategoryMetadata {
+  return CATEGORIES[category];
+}
 
-export const getCategoryIcon = (category: ProductCategory): string => {
+export function getCategoryIcon(category: ProductCategory): string {
   return CATEGORIES[category]?.icon || '📦';
-};
+}
 
-export const getCategoryLabel = (category: ProductCategory): string => {
+export function getCategoryLabel(category: ProductCategory): string {
   return CATEGORIES[category]?.label || category;
-};
+}
+
+export function getCategoryColor(category: ProductCategory): string {
+  return CATEGORIES[category]?.color || '#EBEBEB';
+}
