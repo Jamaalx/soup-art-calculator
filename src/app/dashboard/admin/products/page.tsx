@@ -4,31 +4,13 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import CompanySelector from '@/components/CompanySelector';
+import type { Database } from '@/lib/supabase/database';
 
-interface Product {
-  id: string;
-  product_id: string;
-  nume: string;
-  category_id: string;
-  cantitate: string | null;
-  pret_cost: number;
-  pret_offline: number | null;
-  pret_online: number | null;
-  is_active: boolean;
-  user_id: string | null;
-  company_id: string | null;
-  created_at: string;
-  updated_at: string;
-}
+type Product = Database['public']['Tables']['products']['Row'];
+type ProductInsert = Database['public']['Tables']['products']['Insert'];
+type Category = Database['public']['Tables']['categories']['Row'];
 
-interface Category {
-  category_id: string;
-  name: string;
-  icon: string | null;
-  color: string | null;
-}
-
-export default function ProductsPage() {
+export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,13 +69,10 @@ export default function ProductsPage() {
   };
 
   const fetchCategories = async () => {
-    if (!selectedCompanyId) return;
-
-    // Fetch company template categories (no user_id)
+    // Fetch global template categories (no user_id)
     const { data, error } = await supabase
       .from('categories')
-      .select('category_id, name, icon, color')
-      .eq('company_id', selectedCompanyId)
+      .select('*')
       .is('user_id', null)
       .eq('is_active', true)
       .order('sort_order');
@@ -110,7 +89,7 @@ export default function ProductsPage() {
     
     setLoading(true);
     
-    // Fetch company template products (no user_id)
+    // Fetch company template products (user_id = null, company_id = selected)
     const { data, error } = await supabase
       .from('products')
       .select('*')
@@ -122,7 +101,7 @@ export default function ProductsPage() {
       console.error('Error fetching products:', error);
       alert('Error loading products: ' + error.message);
     } else {
-      console.log('✅ Loaded products:', data?.length);
+      console.log('✅ Loaded template products:', data?.length);
       setProducts(data || []);
     }
     setLoading(false);
@@ -142,7 +121,7 @@ export default function ProductsPage() {
     }
 
     if (editingProduct) {
-      // UPDATE
+      // UPDATE existing template
       const { error } = await supabase
         .from('products')
         .update({
@@ -159,30 +138,32 @@ export default function ProductsPage() {
         alert('Error updating product: ' + error.message);
         return;
       }
-      alert('✅ Product updated successfully!');
+      alert('✅ Product template updated successfully!');
     } else {
-      // INSERT - Create template product for company
+      // INSERT new template
+      const productData: ProductInsert = {
+        product_id: formData.product_id,
+        nume: formData.nume,
+        category_id: formData.category_id,
+        cantitate: formData.cantitate || null,
+        pret_cost: Number(formData.pret_cost),
+        pret_offline: formData.pret_offline ? Number(formData.pret_offline) : null,
+        pret_online: formData.pret_online ? Number(formData.pret_online) : null,
+        is_active: true,
+        user_id: null,  // Template (no user assigned)
+        company_id: selectedCompanyId
+      };
+
       const { error } = await supabase
         .from('products')
-        .insert({
-          product_id: formData.product_id,
-          nume: formData.nume,
-          category_id: formData.category_id,
-          cantitate: formData.cantitate || null,
-          pret_cost: Number(formData.pret_cost),
-          pret_offline: formData.pret_offline ? Number(formData.pret_offline) : null,
-          pret_online: formData.pret_online ? Number(formData.pret_online) : null,
-          is_active: true,
-          user_id: null, // Template product (no user)
-          company_id: selectedCompanyId
-        });
+        .insert(productData);
 
       if (error) {
-        alert('Error creating product: ' + error.message);
+        alert('Error creating product template: ' + error.message);
         console.error('Insert error:', error);
         return;
       }
-      alert('✅ Product created successfully!');
+      alert('✅ Product template created successfully!');
     }
 
     setIsModalOpen(false);
@@ -205,7 +186,7 @@ export default function ProductsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this product? This will affect all users in this company.')) return;
+    if (!confirm('Are you sure you want to delete this template product? This will affect all future user assignments.')) return;
 
     const { error } = await supabase
       .from('products')
@@ -215,7 +196,7 @@ export default function ProductsPage() {
     if (error) {
       alert('Error deleting product: ' + error.message);
     } else {
-      alert('✅ Product deleted successfully!');
+      alert('✅ Product template deleted successfully!');
       fetchProducts();
     }
   };
@@ -260,21 +241,61 @@ export default function ProductsPage() {
       {selectedCompanyId && (
         <>
           {/* Header */}
-          <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border-2 border-gray-200 mt-6">
+          <div className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-2xl shadow-lg p-6 mb-6 text-white mt-6">
             <div className="flex justify-between items-center">
               <div>
-                <h1 className="text-3xl font-black text-gray-900 mb-2">Product Templates</h1>
-                <p className="text-gray-600">Manage company product templates (shared with all users)</p>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-bold">ADMIN</span>
+                  <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-bold">TEMPLATES</span>
+                </div>
+                <h1 className="text-3xl font-black mb-2">Product Templates</h1>
+                <p className="text-white/90">Manage company product templates (shared with company users)</p>
               </div>
               <button
                 onClick={() => {
                   resetForm();
                   setIsModalOpen(true);
                 }}
-                className="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-lg transition"
+                className="px-6 py-3 bg-white text-blue-600 rounded-xl font-bold hover:bg-gray-100 shadow-lg transition"
               >
-                ➕ Add Product
+                ➕ Add Template
               </button>
+            </div>
+          </div>
+
+          {/* Info Banner */}
+          <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">💡</span>
+              <div>
+                <h3 className="font-black text-blue-900 mb-1">About Product Templates</h3>
+                <p className="text-sm text-blue-800">
+                  These are <strong>company templates</strong> that can be assigned to users in this company. When you assign templates to a user, 
+                  they get their own editable copy with their own prices. Changes here won't affect products already assigned to users.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats Bar */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white rounded-xl p-4 shadow-md border-2 border-gray-200">
+              <p className="text-sm text-gray-600 mb-1">Total Templates</p>
+              <p className="text-3xl font-black text-gray-900">{products.length}</p>
+            </div>
+            <div className="bg-green-50 rounded-xl p-4 shadow-md border-2 border-green-200">
+              <p className="text-sm text-green-700 mb-1">Active</p>
+              <p className="text-3xl font-black text-green-700">{products.filter(p => p.is_active).length}</p>
+            </div>
+            <div className="bg-red-50 rounded-xl p-4 shadow-md border-2 border-red-200">
+              <p className="text-sm text-red-700 mb-1">Inactive</p>
+              <p className="text-3xl font-black text-red-700">{products.filter(p => !p.is_active).length}</p>
+            </div>
+            <div className="bg-blue-50 rounded-xl p-4 shadow-md border-2 border-blue-200">
+              <p className="text-sm text-blue-700 mb-1">Categories Used</p>
+              <p className="text-3xl font-black text-blue-700">
+                {new Set(products.map(p => p.category_id)).size}
+              </p>
             </div>
           </div>
 
@@ -313,12 +334,22 @@ export default function ProductsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredProducts.length === 0 ? (
               <div className="col-span-full bg-white rounded-2xl p-12 text-center border-2 border-gray-200">
-                <p className="text-gray-500 text-lg font-bold mb-2">No products found</p>
-                <p className="text-gray-400 text-sm">
+                <span className="text-6xl mb-4 block">📦</span>
+                <p className="text-gray-500 text-lg font-bold mb-2">No product templates found</p>
+                <p className="text-gray-400 text-sm mb-4">
                   {selectedCategory === 'all' 
-                    ? 'Click "Add Product" to create your first product template'
-                    : 'Try adjusting your filters or add a new product'}
+                    ? 'Click "Add Template" to create your first product template'
+                    : 'No products in this category. Try another filter or add a new product.'}
                 </p>
+                <button
+                  onClick={() => {
+                    resetForm();
+                    setIsModalOpen(true);
+                  }}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition"
+                >
+                  ➕ Create First Template
+                </button>
               </div>
             ) : (
               filteredProducts.map((product) => {
@@ -367,6 +398,15 @@ export default function ProductsPage() {
                       </div>
                     </div>
 
+                    <div className="mb-4">
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full font-bold">
+                          🏢 COMPANY TEMPLATE
+                        </span>
+                        <span className="text-gray-500">Unassigned</span>
+                      </div>
+                    </div>
+
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleEdit(product)}
@@ -385,6 +425,37 @@ export default function ProductsPage() {
                 );
               })
             )}
+          </div>
+
+          {/* Quick Actions */}
+          <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-gray-200 mt-6">
+            <h2 className="text-xl font-black mb-4">Quick Actions</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button
+                onClick={() => router.push('/dashboard/admin/users/assign')}
+                className="p-4 border-2 border-blue-200 rounded-xl hover:bg-blue-50 transition text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">👥</span>
+                  <div>
+                    <h3 className="font-black text-gray-900">Assign to Users</h3>
+                    <p className="text-sm text-gray-600">Copy these templates to specific users</p>
+                  </div>
+                </div>
+              </button>
+              <button
+                onClick={() => router.push('/dashboard/admin/categories')}
+                className="p-4 border-2 border-purple-200 rounded-xl hover:bg-purple-50 transition text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">🏷️</span>
+                  <div>
+                    <h3 className="font-black text-gray-900">Manage Categories</h3>
+                    <p className="text-sm text-gray-600">Create category templates for products</p>
+                  </div>
+                </div>
+              </button>
+            </div>
           </div>
         </>
       )}
@@ -409,6 +480,7 @@ export default function ProductsPage() {
                   placeholder="e.g., ciorba-burta"
                   disabled={!!editingProduct}
                 />
+                <p className="text-xs text-gray-500 mt-1">Unique identifier (cannot be changed after creation)</p>
               </div>
 
               <div>
@@ -438,6 +510,9 @@ export default function ProductsPage() {
                     </option>
                   ))}
                 </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  {categories.length === 0 && 'No categories available. Create categories first.'}
+                </p>
               </div>
 
               <div>
@@ -453,10 +528,11 @@ export default function ProductsPage() {
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-bold mb-2 text-red-600">Cost</label>
+                  <label className="block text-xs font-bold mb-2 text-red-600">Cost *</label>
                   <input
                     type="number"
                     step="0.01"
+                    required
                     value={formData.pret_cost}
                     onChange={(e) => setFormData({ ...formData, pret_cost: parseFloat(e.target.value) || 0 })}
                     className="w-full px-3 py-2 border-2 border-red-200 rounded-lg focus:border-red-500 focus:outline-none text-sm"
@@ -489,7 +565,7 @@ export default function ProductsPage() {
 
               <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3">
                 <p className="text-xs text-blue-800">
-                  💡 This is a template product. All users assigned to this company will receive a copy.
+                  💡 This is a <strong>company template</strong>. Users in this company will receive copies when assigned. Each user can then customize their own prices.
                 </p>
               </div>
 
@@ -498,7 +574,7 @@ export default function ProductsPage() {
                   type="submit"
                   className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition"
                 >
-                  {editingProduct ? '💾 Update' : '➕ Create'}
+                  {editingProduct ? '💾 Update Template' : '➕ Create Template'}
                 </button>
                 <button
                   type="button"
