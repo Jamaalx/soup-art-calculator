@@ -3,11 +3,14 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
+// ✅ Updated interface to match database schema exactly
 interface UserProfile {
   id: string;
   email: string;
-  full_name: string | null;
-  role: 'user' | 'admin';
+  full_name: string | null;  // ✅ Allow null
+  company_name?: string | null;  // ✅ Optional field from database
+  phone?: string | null;  // ✅ Optional field from database
+  role: string;  // ✅ Changed from 'user' | 'admin' to string (database returns string)
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -51,6 +54,7 @@ export default function UsersPage() {
       console.error('Error fetching users:', error);
       alert('Error loading users: ' + error.message);
     } else {
+      console.log('✅ Loaded users:', data?.length);
       setUsers(data || []);
     }
     setLoading(false);
@@ -136,7 +140,10 @@ export default function UsersPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          full_name: formData.full_name || null  // ✅ Convert empty string to null
+        })
       });
 
       const result = await response.json();
@@ -165,9 +172,10 @@ export default function UsersPage() {
     });
   };
 
+  // ✅ Safe filtering with null handling
   const filteredUsers = users.filter(user => 
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
     user.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -281,6 +289,9 @@ export default function UsersPage() {
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center">
                     <p className="text-gray-500 text-lg font-bold">No users found</p>
+                    <p className="text-gray-400 text-sm mt-2">
+                      {searchTerm ? 'Try a different search term' : 'Click "Create User" to add your first user'}
+                    </p>
                   </td>
                 </tr>
               ) : (
@@ -298,7 +309,7 @@ export default function UsersPage() {
                         </div>
                         <div>
                           <p className="font-bold text-gray-900">
-                            {user.full_name || 'Unnamed User'}
+                            {user.full_name || 'Unnamed User'}  {/* ✅ Safe null handling */}
                             {user.id === currentUserId && (
                               <span className="ml-2 px-2 py-1 bg-blue-600 text-white text-xs rounded-full">
                                 YOU
@@ -456,7 +467,7 @@ export default function UsersPage() {
               <div className="flex gap-3 pt-4">
                 <button
                   type="submit"
-                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700"
+                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition"
                 >
                   ➕ Create User
                 </button>
@@ -466,7 +477,7 @@ export default function UsersPage() {
                     setIsModalOpen(false);
                     resetForm();
                   }}
-                  className="px-6 py-3 bg-gray-300 text-gray-700 rounded-lg font-bold hover:bg-gray-400"
+                  className="px-6 py-3 bg-gray-300 text-gray-700 rounded-lg font-bold hover:bg-gray-400 transition"
                 >
                   Cancel
                 </button>

@@ -3,23 +3,25 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
+// Updated interfaces to match actual database schema
 interface Product {
   id: string;
   product_id: string;
   nume: string;
-  category_id: string;  // Back to category_id
-  cantitate: string;
+  category_id: string;
+  cantitate: string | null;  // Allow null
   pret_cost: number;
-  pret_offline: number;
-  pret_online: number;
+  pret_offline: number | null;  // Allow null
+  pret_online: number | null;  // Allow null
   is_active: boolean;
+  user_id: string;
 }
 
 interface Category {
   category_id: string;
   name: string;
-  icon: string;
-  color: string;
+  icon: string | null;  // Allow null
+  color: string | null;  // Allow null
 }
 
 export default function ProductsPage() {
@@ -94,16 +96,23 @@ export default function ProductsPage() {
       return;
     }
 
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      alert('You must be logged in');
+      return;
+    }
+
     if (editingProduct) {
       const { error } = await supabase
         .from('products')
         .update({
           nume: formData.nume,
           category_id: formData.category_id,
-          cantitate: formData.cantitate,
+          cantitate: formData.cantitate || null,  // Convert empty string to null
           pret_cost: formData.pret_cost,
-          pret_offline: formData.pret_offline,
-          pret_online: formData.pret_online
+          pret_offline: formData.pret_offline || null,  // Convert 0 to null if needed
+          pret_online: formData.pret_online || null  // Convert 0 to null if needed
         })
         .eq('id', editingProduct.id);
 
@@ -113,12 +122,26 @@ export default function ProductsPage() {
       }
       alert('✅ Product updated successfully!');
     } else {
+      // Create new product with proper structure
+      const newProduct = {
+        product_id: formData.product_id,
+        nume: formData.nume,
+        category_id: formData.category_id,
+        cantitate: formData.cantitate || null,
+        pret_cost: formData.pret_cost,
+        pret_offline: formData.pret_offline || null,
+        pret_online: formData.pret_online || null,
+        is_active: true,
+        user_id: user.id  // Add user_id from current user
+      };
+
       const { error } = await supabase
         .from('products')
-        .insert([{ ...formData, is_active: true }]);
+        .insert([newProduct]);
 
       if (error) {
         alert('Error creating product: ' + error.message);
+        console.error('Insert error:', error);
         return;
       }
       alert('✅ Product created successfully!');
@@ -135,7 +158,7 @@ export default function ProductsPage() {
       product_id: product.product_id,
       nume: product.nume,
       category_id: product.category_id,
-      cantitate: product.cantitate,
+      cantitate: product.cantitate || '',
       pret_cost: product.pret_cost || 0,
       pret_offline: product.pret_offline || 0,
       pret_online: product.pret_online || 0
@@ -232,7 +255,7 @@ export default function ProductsPage() {
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
-              {cat.icon} {cat.name} ({products.filter(p => p.category_id === cat.category_id).length})
+              {cat.icon || '📦'} {cat.name} ({products.filter(p => p.category_id === cat.category_id).length})
             </button>
           ))}
         </div>
@@ -269,7 +292,7 @@ export default function ProductsPage() {
                 </div>
 
                 <div className="flex items-center justify-between text-sm text-gray-600 mb-4">
-                  <span>Quantity: <strong>{product.cantitate}</strong></span>
+                  <span>Quantity: <strong>{product.cantitate || 'N/A'}</strong></span>
                   <span className={`px-2 py-1 rounded-full text-xs font-bold ${
                     product.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                   }`}>
@@ -357,7 +380,7 @@ export default function ProductsPage() {
                   <option value="">Select category...</option>
                   {categories.map(cat => (
                     <option key={cat.category_id} value={cat.category_id}>
-                      {cat.icon} {cat.name}
+                      {cat.icon || '📦'} {cat.name}
                     </option>
                   ))}
                 </select>

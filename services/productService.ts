@@ -1,8 +1,40 @@
 // services/productService.ts
 import { createClient } from '@/lib/supabase/client';
-import { Product } from '@/hooks/useProducts';
 
 const supabase = createClient();
+
+interface DBProduct {
+  id: string;
+  product_id: string;
+  nume: string;
+  category_id: string;
+  company_id: string | null;
+  cantitate: string | null;
+  pret_cost: number;
+  pret_offline: number | null;
+  pret_online: number | null;
+  is_active: boolean;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Product {
+  id: string;
+  product_id: string;
+  nume: string;
+  category_id: string;
+  company_id?: string | null;
+  cantitate?: string | null;
+  pret_cost: number;
+  pret_offline?: number | null;
+  pret_online?: number | null;
+  is_active: boolean;
+  pretCost: number;
+  pretOffline?: number;
+  pretOnline?: number;
+  category: string;
+}
 
 export interface CreateProductInput {
   product_id: string;
@@ -11,15 +43,46 @@ export interface CreateProductInput {
   pret_cost: number;
   pret_offline?: number;
   pret_online?: number;
-  category: string;
+  category_id: string;
 }
 
 export interface UpdateProductInput extends Partial<CreateProductInput> {
   is_active?: boolean;
 }
 
+function transformProduct(dbProduct: DBProduct): Product {
+  return {
+    id: dbProduct.id,
+    product_id: dbProduct.product_id,
+    nume: dbProduct.nume,
+    category_id: dbProduct.category_id,
+    company_id: dbProduct.company_id,
+    cantitate: dbProduct.cantitate,
+    pret_cost: dbProduct.pret_cost,
+    pret_offline: dbProduct.pret_offline,
+    pret_online: dbProduct.pret_online,
+    is_active: dbProduct.is_active,
+    pretCost: dbProduct.pret_cost,
+    pretOffline: dbProduct.pret_offline ?? undefined,
+    pretOnline: dbProduct.pret_online ?? undefined,
+    category: dbProduct.category_id
+  };
+}
+
 class ProductService {
-  // Create a new product
+  private async getUserCompanyId(): Promise<string | null> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
+
+    return profile?.company_id ?? null;
+  }
+
   async createProduct(input: CreateProductInput): Promise<{ data: Product | null; error: any }> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -28,29 +91,38 @@ class ProductService {
         return { data: null, error: { message: 'User not authenticated' } };
       }
 
+      const companyId = await this.getUserCompanyId();
+
       const { data, error } = await supabase
         .from('products')
         .insert([
           {
             user_id: user.id,
-            ...input,
+            company_id: companyId,
+            product_id: input.product_id,
+            nume: input.nume,
+            category_id: input.category_id,
+            cantitate: input.cantitate || null,
+            pret_cost: input.pret_cost,
+            pret_offline: input.pret_offline ?? null,
+            pret_online: input.pret_online ?? null,
             is_active: true
           }
         ])
         .select()
         .single();
 
-      return { data, error };
+      if (error || !data) {
+        return { data: null, error };
+      }
+
+      return { data: transformProduct(data), error: null };
     } catch (error) {
       return { data: null, error };
     }
   }
 
-  // Update a product
-  async updateProduct(
-    productId: string, 
-    updates: UpdateProductInput
-  ): Promise<{ data: Product | null; error: any }> {
+  async updateProduct(productId: string, updates: UpdateProductInput): Promise<{ data: Product | null; error: any }> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -58,21 +130,34 @@ class ProductService {
         return { data: null, error: { message: 'User not authenticated' } };
       }
 
+      const updateData: any = {};
+      if (updates.product_id !== undefined) updateData.product_id = updates.product_id;
+      if (updates.nume !== undefined) updateData.nume = updates.nume;
+      if (updates.category_id !== undefined) updateData.category_id = updates.category_id;
+      if (updates.cantitate !== undefined) updateData.cantitate = updates.cantitate || null;
+      if (updates.pret_cost !== undefined) updateData.pret_cost = updates.pret_cost;
+      if (updates.pret_offline !== undefined) updateData.pret_offline = updates.pret_offline ?? null;
+      if (updates.pret_online !== undefined) updateData.pret_online = updates.pret_online ?? null;
+      if (updates.is_active !== undefined) updateData.is_active = updates.is_active;
+
       const { data, error } = await supabase
         .from('products')
-        .update(updates)
+        .update(updateData)
         .eq('id', productId)
         .eq('user_id', user.id)
         .select()
         .single();
 
-      return { data, error };
+      if (error || !data) {
+        return { data: null, error };
+      }
+
+      return { data: transformProduct(data), error: null };
     } catch (error) {
       return { data: null, error };
     }
   }
 
-  // Delete a product (soft delete)
   async deleteProduct(productId: string): Promise<{ error: any }> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -93,7 +178,6 @@ class ProductService {
     }
   }
 
-  // Permanently delete a product
   async permanentDeleteProduct(productId: string): Promise<{ error: any }> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -114,7 +198,6 @@ class ProductService {
     }
   }
 
-  // Get all products for current user
   async getProducts(): Promise<{ data: Product[]; error: any }> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -128,17 +211,20 @@ class ProductService {
         .select('*')
         .eq('user_id', user.id)
         .eq('is_active', true)
-        .order('category')
+        .order('category_id')
         .order('nume');
 
-      return { data: data || [], error };
+      if (error || !data) {
+        return { data: [], error };
+      }
+
+      return { data: data.map(transformProduct), error: null };
     } catch (error) {
       return { data: [], error };
     }
   }
 
-  // Get products by category
-  async getProductsByCategory(category: string): Promise<{ data: Product[]; error: any }> {
+  async getProductsByCategory(categoryId: string): Promise<{ data: Product[]; error: any }> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -150,22 +236,21 @@ class ProductService {
         .from('products')
         .select('*')
         .eq('user_id', user.id)
-        .eq('category', category)
+        .eq('category_id', categoryId)
         .eq('is_active', true)
         .order('nume');
 
-      return { data: data || [], error };
+      if (error || !data) {
+        return { data: [], error };
+      }
+
+      return { data: data.map(transformProduct), error: null };
     } catch (error) {
       return { data: [], error };
     }
   }
 
-  // Bulk update prices
-  async bulkUpdatePrices(
-    productIds: string[],
-    priceField: 'pret_cost' | 'pret_offline' | 'pret_online',
-    percentage: number
-  ): Promise<{ error: any }> {
+  async bulkUpdatePrices(productIds: string[], priceField: 'pret_cost' | 'pret_offline' | 'pret_online', percentage: number): Promise<{ error: any }> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -173,7 +258,6 @@ class ProductService {
         return { error: { message: 'User not authenticated' } };
       }
 
-      // Get current products
       const { data: products, error: fetchError } = await supabase
         .from('products')
         .select('*')
@@ -181,20 +265,16 @@ class ProductService {
         .eq('user_id', user.id);
 
       if (fetchError) return { error: fetchError };
+      if (!products) return { error: { message: 'No products found' } };
 
-      // Calculate new prices
-      const updates = products?.map(product => ({
-        id: product.id,
-        [priceField]: product[priceField] * (1 + percentage / 100)
-      }));
-
-      // Update all products
-      if (updates) {
-        for (const update of updates) {
+      for (const product of products) {
+        const currentPrice = product[priceField];
+        if (currentPrice !== null) {
+          const newPrice = currentPrice * (1 + percentage / 100);
           await supabase
             .from('products')
-            .update({ [priceField]: update[priceField] })
-            .eq('id', update.id)
+            .update({ [priceField]: newPrice })
+            .eq('id', product.id)
             .eq('user_id', user.id);
         }
       }
@@ -205,7 +285,6 @@ class ProductService {
     }
   }
 
-  // Import products from CSV
   async importProductsFromCSV(csvData: CreateProductInput[]): Promise<{ error: any; imported: number }> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -214,9 +293,18 @@ class ProductService {
         return { error: { message: 'User not authenticated' }, imported: 0 };
       }
 
+      const companyId = await this.getUserCompanyId();
+
       const productsToInsert = csvData.map(product => ({
         user_id: user.id,
-        ...product,
+        company_id: companyId,
+        product_id: product.product_id,
+        nume: product.nume,
+        category_id: product.category_id,
+        cantitate: product.cantitate || null,
+        pret_cost: product.pret_cost,
+        pret_offline: product.pret_offline ?? null,
+        pret_online: product.pret_online ?? null,
         is_active: true
       }));
 
@@ -230,7 +318,6 @@ class ProductService {
     }
   }
 
-  // Export products to CSV format
   async exportProductsToCSV(): Promise<{ data: string | null; error: any }> {
     try {
       const { data: products, error } = await this.getProducts();
@@ -239,8 +326,7 @@ class ProductService {
         return { data: null, error };
       }
 
-      // Convert to CSV
-      const headers = ['product_id', 'nume', 'cantitate', 'pret_cost', 'pret_offline', 'pret_online', 'category'];
+      const headers = ['product_id', 'nume', 'cantitate', 'pret_cost', 'pret_offline', 'pret_online', 'category_id'];
       const csvRows = [
         headers.join(','),
         ...products.map(p => 
