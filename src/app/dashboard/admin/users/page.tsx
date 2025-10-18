@@ -7,19 +7,21 @@ import { createClient } from '@/lib/supabase/client';
 interface UserProfile {
   id: string;
   email: string;
-  full_name: string | null;  // ✅ Allow null
-  company_name?: string | null;  // ✅ Optional field from database
-  phone?: string | null;  // ✅ Optional field from database
-  role: string;  // ✅ Changed from 'user' | 'admin' to string (database returns string)
+  full_name: string | null;
+  company_name?: string | null;
+  phone?: string | null;
+  role: string;
   is_active: boolean;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
+  last_sign_in_at?: string | null;
 }
 
 export default function UsersPage() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const supabase = createClient();
@@ -28,35 +30,73 @@ export default function UsersPage() {
     email: '',
     password: '',
     full_name: '',
-    role: 'user' as 'user' | 'admin'
+    role: 'user' as 'user' | 'admin',
+    company_id: '' as string
   });
 
+  const [companies, setCompanies] = useState<Array<{id: string; company_name: string}>>([]);
+
   useEffect(() => {
-    getCurrentUser();
-    fetchUsers();
+    initializeUser();
   }, []);
 
-  const getCurrentUser = async () => {
+  const initializeUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       setCurrentUserId(user.id);
+      
+      // Check if current user is admin
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+      
+      if (profile?.role === 'admin') {
+        setCurrentUserRole('admin');
+        fetchCompanies();
+        fetchUsers();
+      } else {
+        alert('Access denied. Admin privileges required.');
+        window.location.href = '/dashboard';
+      }
+    } else {
+      alert('Please log in');
+      window.location.href = '/login';
+    }
+  };
+
+  const fetchCompanies = async () => {
+    const { data, error } = await supabase
+      .from('companies')
+      .select('id, company_name')
+      .eq('is_active', true)
+      .order('company_name');
+    
+    if (!error && data) {
+      setCompanies(data);
     }
   };
 
   const fetchUsers = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
+    
+    try {
+      // ✅ Use the admin API route to fetch users
+      const response = await fetch('/api/admin/users');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch users');
+      }
+      
+      const data = await response.json();
+      console.log('✅ Loaded users:', data.users?.length);
+      setUsers(data.users || []);
+    } catch (error: any) {
       console.error('Error fetching users:', error);
       alert('Error loading users: ' + error.message);
-    } else {
-      console.log('✅ Loaded users:', data?.length);
-      setUsers(data || []);
     }
+    
     setLoading(false);
   };
 
@@ -126,23 +166,18 @@ export default function UsersPage() {
     }
 
     try {
-      // Get current session token
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        alert('You must be logged in');
-        return;
-      }
-
-      // Call API route to create user
-      const response = await fetch('/api/admin/create-user', {
+      // ✅ Call the admin users API route
+      const response = await fetch('/api/admin/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
-          ...formData,
-          full_name: formData.full_name || null  // ✅ Convert empty string to null
+          email: formData.email,
+          password: formData.password,
+          full_name: formData.full_name || null,
+          role: formData.role,
+          company_id: formData.company_id || null
         })
       });
 
@@ -163,12 +198,43 @@ export default function UsersPage() {
     }
   };
 
+  const handleDeleteUser = async (userId: string) => {
+    if (userId === currentUserId) {
+      alert('You cannot delete yourself!');
+      return;
+    }
+
+    if (!confirm('Are you sure you want to delete this user? This action cannot be undone!')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/users?userId=${userId}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete user');
+      }
+
+      alert('✅ User deleted successfully!');
+      fetchUsers();
+
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      alert('Error deleting user: ' + error.message);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       email: '',
       password: '',
       full_name: '',
-      role: 'user'
+      role: 'user',
+      company_id: ''
     });
   };
 
@@ -309,7 +375,7 @@ export default function UsersPage() {
                         </div>
                         <div>
                           <p className="font-bold text-gray-900">
-                            {user.full_name || 'Unnamed User'}  {/* ✅ Safe null handling */}
+                            {user.full_name || 'Unnamed User'}
                             {user.id === currentUserId && (
                               <span className="ml-2 px-2 py-1 bg-blue-600 text-white text-xs rounded-full">
                                 YOU
@@ -317,7 +383,16 @@ export default function UsersPage() {
                             )}
                           </p>
                           <p className="text-sm text-gray-500">{user.email}</p>
-                          <p className="text-xs text-gray-400 font-mono">{user.id}</p>
+                          {user.company_name && (
+                            <p className="text-xs text-blue-600 font-semibold">
+                              🏢 {user.company_name}
+                            </p>
+                          )}
+                          {user.last_sign_in_at && (
+                            <p className="text-xs text-gray-400">
+                              Last login: {new Date(user.last_sign_in_at).toLocaleDateString()}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -367,13 +442,22 @@ export default function UsersPage() {
                         <button
                           onClick={() => handleToggleActive(user.id, user.is_active)}
                           disabled={user.id === currentUserId}
-                          className={`px-4 py-2 rounded-lg font-bold text-sm transition ${
+                          className={`px-3 py-2 rounded-lg font-bold text-xs transition ${
                             user.is_active
-                              ? 'bg-red-500 text-white hover:bg-red-600'
+                              ? 'bg-orange-500 text-white hover:bg-orange-600'
                               : 'bg-green-500 text-white hover:bg-green-600'
                           } ${user.id === currentUserId ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                           {user.is_active ? 'Deactivate' : 'Activate'}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(user.id)}
+                          disabled={user.id === currentUserId}
+                          className={`px-3 py-2 bg-red-500 text-white rounded-lg font-bold text-xs hover:bg-red-600 transition ${
+                            user.id === currentUserId ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
+                        >
+                          🗑️ Delete
                         </button>
                       </div>
                     </td>
@@ -396,7 +480,8 @@ export default function UsersPage() {
               <li>• <strong>Regular users</strong> can only access the calculator and their own data</li>
               <li>• <strong>Inactive users</strong> cannot log in to the system</li>
               <li>• You cannot change your own role or deactivate yourself</li>
-              <li>• All user changes are logged and auditable</li>
+              <li>• <strong>Deleting a user</strong> is permanent and cannot be undone</li>
+              <li>• Each user has isolated data (products, categories, calculations)</li>
             </ul>
           </div>
         </div>
@@ -447,6 +532,23 @@ export default function UsersPage() {
               </div>
 
               <div>
+                <label className="block text-sm font-bold mb-2">Company</label>
+                <select
+                  value={formData.company_id}
+                  onChange={(e) => setFormData({ ...formData, company_id: e.target.value })}
+                  className="w-full px-4 py-2 border-2 rounded-lg focus:border-blue-500 focus:outline-none"
+                >
+                  <option value="">No company (Independent user)</option>
+                  {companies.map(company => (
+                    <option key={company.id} value={company.id}>
+                      {company.company_name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">User will inherit company products and categories</p>
+              </div>
+
+              <div>
                 <label className="block text-sm font-bold mb-2">Role *</label>
                 <select
                   value={formData.role}
@@ -460,7 +562,7 @@ export default function UsersPage() {
 
               <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-3">
                 <p className="text-xs text-yellow-800">
-                  ⚠️ <strong>Note:</strong> Email will be auto-confirmed. User can login immediately.
+                  ⚠️ <strong>Note:</strong> Email will be auto-confirmed. If company is selected, user will automatically receive all company products and categories.
                 </p>
               </div>
 

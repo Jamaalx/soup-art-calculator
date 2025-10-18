@@ -47,12 +47,12 @@ export async function GET(request: NextRequest) {
         if (!profile) {
           const { data: newProfile, error: profileError } = await supabaseAdmin
             .from('profiles')
-            .upsert({
+            .insert({
               id: authUser.id,
-              email: authUser.email,
+              email: authUser.email || '',
               role: 'user',
               full_name: authUser.user_metadata?.full_name || null,
-              created_at: authUser.created_at
+              is_active: true
             })
             .select()
             .single();
@@ -106,13 +106,29 @@ export async function POST(request: NextRequest) {
 
     // Get request body
     const body = await request.json();
-    const { email, password, full_name, role } = body;
+    const { email, password, full_name, role, company_id } = body;
 
     if (!email || !password) {
       return NextResponse.json(
         { error: 'Email and password are required' },
         { status: 400 }
       );
+    }
+
+    // Validate company exists if provided
+    if (company_id) {
+      const { data: company } = await supabaseAdmin
+        .from('companies')
+        .select('id, company_name')
+        .eq('id', company_id)
+        .single();
+
+      if (!company) {
+        return NextResponse.json(
+          { error: 'Invalid company ID' },
+          { status: 400 }
+        );
+      }
     }
 
     // Create user using admin client
@@ -133,15 +149,28 @@ export async function POST(request: NextRequest) {
       throw new Error('User creation failed');
     }
 
-    // Create/update profile
+    // Get company name if company_id provided
+    let companyName = null;
+    if (company_id) {
+      const { data: company } = await supabaseAdmin
+        .from('companies')
+        .select('company_name')
+        .eq('id', company_id)
+        .single();
+      companyName = company?.company_name || null;
+    }
+
+    // Create profile with company assignment
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
-      .upsert({
+      .insert({
         id: newUser.user.id,
-        email: newUser.user.email,
+        email: newUser.user.email || '',
         role: role || 'user',
         full_name: full_name || null,
-        created_at: new Date().toISOString()
+        company_id: company_id || null,
+        company_name: companyName,
+        is_active: true
       });
 
     if (profileError) {
@@ -150,13 +179,64 @@ export async function POST(request: NextRequest) {
       throw profileError;
     }
 
+    // If user has company, copy company products and categories to user
+    if (company_id) {
+      // Copy company products to user
+      const { data: companyProducts } = await supabaseAdmin
+        .from('products')
+        .select('*')
+        .eq('company_id', company_id)
+        .is('user_id', null); // Get template products
+
+      if (companyProducts && companyProducts.length > 0) {
+        const userProducts = companyProducts.map(p => ({
+          product_id: p.product_id,
+          nume: p.nume,
+          category_id: p.category_id,
+          cantitate: p.cantitate,
+          pret_cost: p.pret_cost,
+          pret_offline: p.pret_offline,
+          pret_online: p.pret_online,
+          is_active: p.is_active,
+          user_id: newUser.user.id,
+          company_id: company_id
+        }));
+
+        await supabaseAdmin.from('products').insert(userProducts);
+      }
+
+      // Copy company categories to user
+      const { data: companyCategories } = await supabaseAdmin
+        .from('categories')
+        .select('*')
+        .eq('company_id', company_id)
+        .is('user_id', null); // Get template categories
+
+      if (companyCategories && companyCategories.length > 0) {
+        const userCategories = companyCategories.map(c => ({
+          category_id: c.category_id,
+          name: c.name,
+          icon: c.icon,
+          color: c.color,
+          sort_order: c.sort_order,
+          is_active: c.is_active,
+          user_id: newUser.user.id,
+          company_id: company_id
+        }));
+
+        await supabaseAdmin.from('categories').insert(userCategories);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       user: {
         id: newUser.user.id,
         email: newUser.user.email,
         role: role || 'user',
-        full_name: full_name || null
+        full_name: full_name || null,
+        company_id: company_id || null,
+        company_name: companyName
       }
     });
   } catch (error: any) {

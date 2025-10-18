@@ -1,23 +1,31 @@
-import type { Metadata } from 'next';
-import { AuthProvider } from '@/contexts/AuthContext';
-import './globals.css';
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
 
 export const metadata: Metadata = {
-  title: 'ZED ZEN - Menu Calculator',
-  description: 'Calculator profesional de prețuri pentru meniuri catering',
+  title: "Menu Calculator Pro",
+  description: "Professional menu pricing calculator",
 };
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
-    <html lang="ro">
-      <body>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+    <html lang="ro" suppressHydrationWarning>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
+        {children}
       </body>
     </html>
   );

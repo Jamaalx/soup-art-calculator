@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 
 export default function AdminLayout({ 
@@ -13,6 +13,7 @@ export default function AdminLayout({
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
   const supabase = createClient();
 
   useEffect(() => {
@@ -20,16 +21,11 @@ export default function AdminLayout({
       try {
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         
-        console.log('🔍 Admin Check - User:', user?.email);
-        console.log('🔍 Admin Check - User Error:', userError);
-        
         if (userError || !user) {
           console.log('❌ No user found, redirecting to login');
           router.push('/login');
           return;
         }
-
-        console.log('🔍 Fetching profile for user ID:', user.id);
 
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
@@ -37,19 +33,14 @@ export default function AdminLayout({
           .eq('id', user.id)
           .single();
 
-        console.log('🔍 Profile data:', profile);
-        console.log('🔍 Profile error:', profileError);
-
         if (profileError) {
           console.error('❌ Error fetching profile:', profileError);
           router.push('/dashboard');
           return;
         }
 
-        console.log('🔍 User role:', profile?.role);
-
         if (profile?.role !== 'admin') {
-          console.log('❌ User is not admin, redirecting. Role is:', profile?.role);
+          console.log('❌ User is not admin, redirecting');
           router.push('/dashboard');
           return;
         }
@@ -82,12 +73,53 @@ export default function AdminLayout({
     return null;
   }
 
+  // Navigation items with active state
+  const navItems = [
+    {
+      href: '/dashboard/admin',
+      label: '🏠 Dashboard',
+      icon: '🏠',
+      color: 'bg-green-600 hover:bg-green-700'
+    },
+    {
+    href: '/dashboard/admin/companies',
+    label: '🏢 Companies',
+    icon: '🏢',
+    color: 'bg-indigo-600 hover:bg-indigo-700'
+  },
+    {
+      href: '/dashboard/admin/users',
+      label: '👥 Users',
+      icon: '👥',
+      color: 'bg-blue-600 hover:bg-blue-700'
+    },
+    {
+      href: '/dashboard/admin/products',
+      label: '📦 Products',
+      icon: '📦',
+      color: 'bg-purple-600 hover:bg-purple-700'
+    },
+    {
+      href: '/dashboard/admin/categories',
+      label: '🏷️ Categories',
+      icon: '🏷️',
+      color: 'bg-orange-600 hover:bg-orange-700'
+    },
+    {
+      href: '/dashboard/admin/settings',
+      label: '⚙️ Settings',
+      icon: '⚙️',
+      color: 'bg-gray-600 hover:bg-gray-700'
+    }
+  ];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
       {/* Admin Navigation */}
       <nav className="bg-white border-b-2 border-gray-200 sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
+            {/* Left side - Back button and title */}
             <div className="flex items-center gap-6">
               <Link 
                 href="/dashboard" 
@@ -98,32 +130,26 @@ export default function AdminLayout({
               <div className="h-6 w-px bg-gray-300"></div>
               <h1 className="text-2xl font-black text-gray-900">👑 Admin Panel</h1>
             </div>
-            <div className="flex gap-3">
-  <Link
-    href="/dashboard/admin/products"
-    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition shadow-md"
-  >
-    📦 Products
-  </Link>
-  <Link
-    href="/dashboard/admin/categories"
-    className="px-4 py-2 bg-purple-600 text-white rounded-lg font-bold hover:bg-purple-700 transition shadow-md"
-  >
-    📁 Categories
-  </Link>
-  <Link
-    href="/dashboard/admin/users"
-    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300 transition"
-  >
-    👥 Users
-  </Link>
-  <Link
-    href="/dashboard/admin/settings"
-    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300 transition"
-  >
-    ⚙️ Settings
-  </Link>
-</div>
+
+            {/* Right side - Navigation links */}
+            <div className="flex gap-2">
+              {navItems.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`px-4 py-2 rounded-lg font-bold transition shadow-md ${
+                      isActive
+                        ? `${item.color} text-white ring-2 ring-offset-2 ring-blue-500`
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         </div>
       </nav>

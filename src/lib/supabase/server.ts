@@ -1,11 +1,11 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { createServerClient as createSupabaseServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import type { Database } from '@/types/database';
 
 export async function createServerSupabaseClient() {
   const cookieStore = await cookies();
 
-  return createServerClient<Database>(
+  return createSupabaseServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -13,21 +13,24 @@ export async function createServerSupabaseClient() {
         get(name: string) {
           return cookieStore.get(name)?.value;
         },
-        set(name: string, value: string, options: CookieOptions) {
+        set(name: string, value: string, options: any) {
           try {
             cookieStore.set({ name, value, ...options });
           } catch (error) {
-            // Ignore cookie errors in Server Components
+            // Handle cookie setting errors in server components
           }
         },
-        remove(name: string, options: CookieOptions) {
+        remove(name: string, options: any) {
           try {
             cookieStore.set({ name, value: '', ...options });
           } catch (error) {
-            // Ignore cookie errors in Server Components
+            // Handle cookie removal errors in server components
           }
         },
       },
     }
   );
 }
+
+// Also export a simpler name for convenience
+export const createServerClient = createServerSupabaseClient;
