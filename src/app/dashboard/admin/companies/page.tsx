@@ -20,7 +20,7 @@ interface Company {
 
 interface CalculatorSetting {
   id?: string;
-  company_id: string | null;
+  company_id?: string | null;
   setting_key: string;
   setting_category: string;
   label: string;
@@ -53,7 +53,7 @@ export default function CompaniesPage() {
   });
 
   // Default calculator settings for new companies
-  const defaultSettings: Omit<CalculatorSetting, 'id' | 'company_id'>[] = [
+  const defaultSettings = [
     {
       setting_key: 'default_profit_margin',
       setting_category: 'general',
@@ -231,11 +231,20 @@ export default function CompaniesPage() {
         return;
       }
 
-      // Create default settings for the new company
+      // CRITICAL FIX: Only send the fields that should be inserted
       const settingsToInsert = settingsFormData.map(setting => ({
-        ...setting,
+        setting_key: setting.setting_key,
+        setting_category: setting.setting_category,
+        label: setting.label,
+        description: setting.description,
+        value_type: setting.value_type,
+        value_number: setting.value_number,
+        sort_order: setting.sort_order,
+        is_active: setting.is_active,
         company_id: newCompany.id
       }));
+
+      console.log('Inserting settings:', settingsToInsert);
 
       const { error: settingsError } = await supabase
         .from('calculator_settings')
@@ -259,35 +268,38 @@ export default function CompaniesPage() {
     const settings = await fetchCompanySettings(company.id);
     
     if (settings.length === 0) {
-      // No settings exist, use defaults with proper types
+      // No settings exist, use defaults
       const defaultsWithCompany: CalculatorSetting[] = defaultSettings.map(s => ({ 
         ...s, 
-        company_id: company.id,
-        id: undefined,
-        description: s.description,
-        sort_order: s.sort_order,
-        created_at: undefined,
-        updated_at: undefined
+        company_id: company.id
       }));
       setCompanySettings(defaultsWithCompany);
-    } else {
-      setCompanySettings(settings);
-    }
-    
+    }  
     setIsSettingsModalOpen(true);
   };
 
   const handleSaveSettings = async () => {
     if (!selectedCompanyForSettings) return;
 
-    // Check if settings exist
     const existingSettings = await fetchCompanySettings(selectedCompanyForSettings.id);
 
     if (existingSettings.length === 0) {
-      // Insert new settings
+      // Insert new settings - only send necessary fields
+      const settingsToInsert = companySettings.map(s => ({
+        setting_key: s.setting_key,
+        setting_category: s.setting_category,
+        label: s.label,
+        description: s.description,
+        value_type: s.value_type,
+        value_number: s.value_number,
+        sort_order: s.sort_order,
+        is_active: s.is_active,
+        company_id: selectedCompanyForSettings.id
+      }));
+
       const { error } = await supabase
         .from('calculator_settings')
-        .insert(companySettings.map(s => ({ ...s, company_id: selectedCompanyForSettings.id })));
+        .insert(settingsToInsert);
 
       if (error) {
         alert('Error creating settings: ' + error.message);
@@ -357,14 +369,12 @@ export default function CompaniesPage() {
       cui: ''
     });
     setEditingCompany(null);
-    // Reset settings to defaults for next creation
-    setSettingsFormData(defaultSettings.map(s => ({ ...s, company_id: '', id: undefined })));
+    setSettingsFormData(defaultSettings as CalculatorSetting[]);
   };
 
-  // Initialize settings form data when modal opens
   useEffect(() => {
     if (isModalOpen && !editingCompany) {
-      setSettingsFormData(defaultSettings.map(s => ({ ...s, company_id: '', id: undefined })));
+      setSettingsFormData(defaultSettings as CalculatorSetting[]);
     }
   }, [isModalOpen]);
 

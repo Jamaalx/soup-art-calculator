@@ -45,23 +45,23 @@ export default function DashboardNav() {
   if (loading) return null;
 
   return (
-    <nav className="bg-white border-b-4 border-black shadow-lg">
+    <nav className="bg-white border-b-4 border-black shadow-lg mb-6">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center h-20">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="text-3xl font-black">Z</div>
+            <div className="text-4xl font-black text-black">Z</div>
             <div className="flex flex-col">
-              <span className="text-xs font-black tracking-widest">ZED</span>
-              <span className="text-xs font-black tracking-widest">ZEN</span>
+              <span className="text-sm font-black tracking-widest text-black">ZED</span>
+              <span className="text-sm font-black tracking-widest text-black">ZEN</span>
             </div>
           </div>
 
           {/* Navigation Links */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => router.push('/dashboard')}
-              className="px-4 py-2 bg-[#BBDCFF] border-2 border-black rounded-lg font-bold text-black hover:scale-105 transition-transform"
+              className="px-5 py-2.5 bg-[#BBDCFF] border-2 border-black rounded-xl font-bold text-black hover:scale-105 transition-transform shadow-md"
             >
               📊 Calculator
             </button>
@@ -69,22 +69,24 @@ export default function DashboardNav() {
             {isAdmin && (
               <button
                 onClick={() => router.push('/dashboard/admin')}
-                className="px-4 py-2 bg-red-500 border-2 border-black rounded-lg font-bold text-white hover:scale-105 transition-transform"
+                className="px-5 py-2.5 bg-red-500 border-2 border-black rounded-xl font-bold text-white hover:scale-105 transition-transform shadow-md"
               >
                 🔐 Admin
               </button>
             )}
 
             {/* User Info */}
-            <div className="px-4 py-2 bg-[#9eff55] border-2 border-black rounded-lg">
-              <div className="text-xs font-bold">USER</div>
-              <div className="text-sm font-black">{user?.email?.split('@')[0]}</div>
+            <div className="px-5 py-2.5 bg-[#9eff55] border-2 border-black rounded-xl shadow-md">
+              <div className="text-xs font-bold text-black">USER</div>
+              <div className="text-sm font-black text-black truncate max-w-[150px]">
+                {user?.email?.split('@')[0] || 'user'}
+              </div>
             </div>
 
-            {/* Logout */}
+            {/* Logout Button - FIXED: Now with white text and visible */}
             <button
               onClick={handleSignOut}
-              className="px-4 py-2 bg-black text-white border-2 border-black rounded-lg font-bold hover:bg-gray-800 transition-colors"
+              className="px-5 py-2.5 bg-red-600 text-white border-2 border-black rounded-xl font-bold hover:bg-red-700 transition-all hover:scale-105 shadow-md"
             >
               🚪 Logout
             </button>
