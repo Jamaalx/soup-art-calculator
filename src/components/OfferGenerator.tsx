@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import type { Product, ProductCategory } from '@/types';
+import React, { useState, useMemo } from 'react';
+import type { Product } from '@/types';
 import { getCategoryLabel } from '@/lib/data/categories';
 
 interface OfferGeneratorProps {
@@ -41,19 +41,23 @@ const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products }) => {
     selectedProducts: {}
   });
 
-  const [selectedCategory, setSelectedCategory] = useState<ProductCategory | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  const categories: ProductCategory[] = [
-    'ciorbe', 'felPrincipal', 'garnituri', 'desert', 
-    'placinte', 'salate', 'bauturi', 'vinuri'
-  ];
+  // FIXED: Get categories dynamically from products
+  const categories = useMemo(() => {
+    const uniqueCategories = Array.from(new Set(products.map(p => p.category)));
+    return uniqueCategories.sort();
+  }, [products]);
 
-  const productsByCategory = categories.reduce((acc, cat) => {
-    acc[cat] = products.filter(p => p.category === cat && p.is_active);
-    return acc;
-  }, {} as Record<ProductCategory, Product[]>);
+  // FIXED: Filter active products properly
+  const productsByCategory = useMemo(() => {
+    return categories.reduce((acc, cat) => {
+      acc[cat] = products.filter(p => p.category === cat && p.is_active);
+      return acc;
+    }, {} as Record<string, Product[]>);
+  }, [categories, products]);
 
-  const handleToggleProduct = (category: ProductCategory, productId: string) => {
+  const handleToggleProduct = (category: string, productId: string) => {
     setSettings(prev => {
       const categoryProducts = prev.selectedProducts[category] || [];
       const isSelected = categoryProducts.includes(productId);
@@ -70,7 +74,7 @@ const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products }) => {
     });
   };
 
-  const handleSelectAllCategory = (category: ProductCategory) => {
+  const handleSelectAllCategory = (category: string) => {
     const allIds = productsByCategory[category].map(p => p.id);
     setSettings(prev => ({
       ...prev,
@@ -138,7 +142,7 @@ COMPOZIȚIE MENIU:
 `;
       Object.entries(settings.selectedProducts).forEach(([category, productIds]) => {
         if (productIds.length > 0) {
-          offerText += `\n${getCategoryLabel(category as ProductCategory).toUpperCase()}:\n`;
+          offerText += `\n${getCategoryLabel(category).toUpperCase()}:\n`;
           productIds.forEach((id, index) => {
             const product = products.find(p => p.id === id);
             if (product) {
@@ -156,7 +160,7 @@ OPȚIUNI DISPONIBILE:
 `;
       Object.entries(settings.selectedProducts).forEach(([category, productIds]) => {
         if (productIds.length > 0) {
-          offerText += `\n${getCategoryLabel(category as ProductCategory).toUpperCase()} (alegeți zilnic):\n`;
+          offerText += `\n${getCategoryLabel(category).toUpperCase()} (alegeți zilnic):\n`;
           productIds.forEach((id, index) => {
             const product = products.find(p => p.id === id);
             if (product) {

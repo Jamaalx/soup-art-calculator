@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import type { Product, ProductCategory, FixedMenuCombo } from '@/types';
-import { CATEGORIES, getCategoryIcon, getCategoryLabel } from '@/lib/data/categories';
+import type { Product, FixedMenuCombo } from '@/types';
+import { getCategoryIcon, getCategoryLabel, getCategoryColor } from '@/lib/data/categories';
 
 interface CategorySlot {
   id: string;
-  category: ProductCategory;
+  category: string;
 }
 
 interface MeniuFixBuilderProps {
@@ -22,24 +22,28 @@ const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({ products, calculatorT
   const [comboName, setComboName] = useState<string>('');
   const [comboPrice, setComboPrice] = useState<number>(35);
 
-  // Online: 3 lei packaging + 36.3% commission
-  // Offline/Catering: No extra costs
-  const COSTURI_FIXE = calculatorType === 'online' ? 0 : 0; // Will add dynamically in calculations
+  const COSTURI_FIXE = calculatorType === 'online' ? 0 : 0;
 
-  const availableCategories: ProductCategory[] = [
-    'ciorbe', 'felPrincipal', 'garnituri', 'desert', 'salate', 
-    'bauturi', 'vinuri', 'placinte'
-  ];
-
-  const productsByCategory = useMemo(() => {
-    const grouped: Record<ProductCategory, Product[]> = {} as Record<ProductCategory, Product[]>;
-    availableCategories.forEach(cat => {
-      grouped[cat] = products.filter(p => p.category === cat && p.isActive);
+  // Get unique categories dynamically from products
+  const availableCategories = useMemo(() => {
+    const categories = new Set<string>();
+    products.forEach(p => {
+      if (p.is_active) {
+        categories.add(p.category);
+      }
     });
-    return grouped;
+    return Array.from(categories).sort();
   }, [products]);
 
-  const handleAddCategory = (category: ProductCategory) => {
+  const productsByCategory = useMemo(() => {
+    const grouped: Record<string, Product[]> = {};
+    availableCategories.forEach(cat => {
+      grouped[cat] = products.filter(p => p.category === cat && p.is_active);
+    });
+    return grouped;
+  }, [products, availableCategories]);
+
+  const handleAddCategory = (category: string) => {
     setCategorySlots(prev => [...prev, { 
       id: `${category}-${Date.now()}`, 
       category 
@@ -69,7 +73,7 @@ const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({ products, calculatorT
       const product = products.find(p => p.id === productId);
       if (!product) return null;
       return { slotId: slot.id, category: slot.category, product };
-    }).filter(Boolean) as Array<{ slotId: string; category: ProductCategory; product: Product }>;
+    }).filter(Boolean) as Array<{ slotId: string; category: string; product: Product }>;
   }, [categorySlots, selectedProducts, products]);
 
   const comboCalculations = useMemo(() => {
@@ -86,10 +90,14 @@ const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({ products, calculatorT
     }
 
     const totalCost = selectedProductsArray.reduce((sum, { product }) => 
-      sum + product.pretCost, 0) + COSTURI_FIXE;
+      sum + product.pret_cost, 0) + COSTURI_FIXE;
     
-    const individualPrice = selectedProductsArray.reduce((sum, { product }) => 
-      sum + (calculatorType === 'online' ? product.pretOnline : product.pretOffline), 0);
+    const individualPrice = selectedProductsArray.reduce((sum, { product }) => {
+      const price = calculatorType === 'online' 
+        ? (product.pret_online || 0) 
+        : (product.pret_offline || 0);
+      return sum + price;
+    }, 0);
     
     const profit = comboPrice - totalCost;
     const marjaProfit = (profit / totalCost) * 100;
@@ -151,8 +159,10 @@ const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({ products, calculatorT
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {availableCategories.map(category => {
-            const categoryInfo = CATEGORIES[category];
             const count = productsByCategory[category]?.length || 0;
+            const icon = getCategoryIcon(category);
+            const label = getCategoryLabel(category);
+            const color = getCategoryColor(category);
             
             return (
               <button
@@ -160,11 +170,11 @@ const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({ products, calculatorT
                 onClick={() => handleAddCategory(category)}
                 disabled={count === 0}
                 className="flex flex-col items-center gap-2 p-4 rounded-2xl border-4 border-black hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ backgroundColor: categoryInfo.color }}
+                style={{ backgroundColor: color }}
               >
-                <span className="text-3xl">{categoryInfo.icon}</span>
+                <span className="text-3xl">{icon}</span>
                 <span className="text-xs font-black text-black text-center">
-                  {categoryInfo.label}
+                  {label}
                 </span>
                 <span className="text-xs font-bold text-gray-800">
                   {count} produse
@@ -182,16 +192,19 @@ const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({ products, calculatorT
             </p>
             <div className="flex flex-wrap gap-2">
               {categorySlots.map((slot, index) => {
-                const categoryInfo = CATEGORIES[slot.category];
+                const icon = getCategoryIcon(slot.category);
+                const label = getCategoryLabel(slot.category);
+                const color = getCategoryColor(slot.category);
+                
                 return (
                   <div 
                     key={slot.id}
                     className="flex items-center gap-2 px-3 py-2 rounded-xl border-2 border-black"
-                    style={{ backgroundColor: categoryInfo.color }}
+                    style={{ backgroundColor: color }}
                   >
-                    <span className="text-lg">{categoryInfo.icon}</span>
+                    <span className="text-lg">{icon}</span>
                     <span className="text-xs font-black text-black">
-                      #{index + 1} {categoryInfo.label}
+                      #{index + 1} {label}
                     </span>
                     <button
                       onClick={() => handleRemoveSlot(slot.id)}
@@ -219,15 +232,17 @@ const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({ products, calculatorT
 
           <div className="space-y-4">
             {categorySlots.map((slot, index) => {
-              const categoryInfo = CATEGORIES[slot.category];
               const categoryProducts = productsByCategory[slot.category] || [];
+              const icon = getCategoryIcon(slot.category);
+              const label = getCategoryLabel(slot.category);
+              const color = getCategoryColor(slot.category);
 
               return (
-                <div key={slot.id} className="p-4 rounded-2xl border-2 border-black" style={{ backgroundColor: `${categoryInfo.color}40` }}>
+                <div key={slot.id} className="p-4 rounded-2xl border-2 border-black" style={{ backgroundColor: `${color}40` }}>
                   <div className="flex items-center gap-3 mb-3">
-                    <span className="text-2xl">{categoryInfo.icon}</span>
+                    <span className="text-2xl">{icon}</span>
                     <span className="text-sm font-black text-black">
-                      #{index + 1} {categoryInfo.label}
+                      #{index + 1} {label}
                     </span>
                   </div>
                   
@@ -239,7 +254,7 @@ const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({ products, calculatorT
                     <option value="">Selectează produs...</option>
                     {categoryProducts.map(product => (
                       <option key={product.id} value={product.id}>
-                        {product.nume} - {product.pretCost.toFixed(2)} lei
+                        {product.nume} - {product.pret_cost.toFixed(2)} lei
                       </option>
                     ))}
                   </select>
@@ -296,7 +311,7 @@ const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({ products, calculatorT
             <p className="text-sm font-black text-black mb-2">PRODUSE SELECTATE:</p>
             {selectedProductsArray.map(({ category, product }, index) => (
               <p key={index} className="text-xs font-bold text-black">
-                • {getCategoryLabel(category)}: {product.nume} ({product.pretCost.toFixed(2)} lei)
+                • {getCategoryLabel(category)}: {product.nume} ({product.pret_cost.toFixed(2)} lei)
               </p>
             ))}
           </div>

@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import type { Product, ProductCategory, MenuCombination } from '@/types';
-import { CATEGORIES, getCategoryIcon, getCategoryLabel } from '@/lib/data/categories';
+import type { Product, MenuCombination } from '@/types';
+import { getCategoryIcon, getCategoryLabel, getCategoryColor } from '@/lib/data/categories';
 
 interface CategorySlot {
   id: string;
-  category: ProductCategory;
-  selectedProducts: string[]; // Array of product IDs
+  category: string;
+  selectedProducts: string[];
 }
 
 interface MeniuVariatiiBuilderProps {
@@ -23,23 +23,29 @@ const MeniuVariatiiBuilder: React.FC<MeniuVariatiiBuilderProps> = ({ products, c
   const [sortBy, setSortBy] = useState<'marjaProfit' | 'profit' | 'costTotal'>('marjaProfit');
 
   // Online calculator costs
-  const AMBALAJ_COST = 3.0; // 3 lei per menu
-  const APP_COMMISSION = 0.363; // 36.3%
+  const AMBALAJ_COST = 3.0;
+  const APP_COMMISSION = 0.363;
   
-  const availableCategories: ProductCategory[] = [
-    'ciorbe', 'felPrincipal', 'garnituri', 'desert', 'salate', 
-    'bauturi', 'vinuri', 'placinte'
-  ];
-
-  const productsByCategory = useMemo(() => {
-    const grouped: Record<ProductCategory, Product[]> = {} as Record<ProductCategory, Product[]>;
-    availableCategories.forEach(cat => {
-      grouped[cat] = products.filter(p => p.category === cat && p.isActive);
+  // Get unique categories dynamically from products
+  const availableCategories = useMemo(() => {
+    const categories = new Set<string>();
+    products.forEach(p => {
+      if (p.is_active) {
+        categories.add(p.category);
+      }
     });
-    return grouped;
+    return Array.from(categories).sort();
   }, [products]);
 
-  const handleAddCategory = (category: ProductCategory) => {
+  const productsByCategory = useMemo(() => {
+    const grouped: Record<string, Product[]> = {};
+    availableCategories.forEach(cat => {
+      grouped[cat] = products.filter(p => p.category === cat && p.is_active);
+    });
+    return grouped;
+  }, [products, availableCategories]);
+
+  const handleAddCategory = (category: string) => {
     setCategorySlots(prev => [...prev, { 
       id: `${category}-${Date.now()}`, 
       category,
@@ -99,20 +105,22 @@ const MeniuVariatiiBuilder: React.FC<MeniuVariatiiBuilderProps> = ({ products, c
         if (current.length < 2) return [];
         
         // Calculate food cost
-        const foodCost = current.reduce((sum, p) => sum + p.pretCost, 0);
+        const foodCost = current.reduce((sum, p) => sum + p.pret_cost, 0);
         
         // Calculate total cost based on calculator type
         let costTotal = foodCost;
         if (calculatorType === 'online') {
-          const AMBALAJ_COST = 3.0;
           const appCommissionAmount = menuPrice * APP_COMMISSION;
           costTotal = foodCost + AMBALAJ_COST + appCommissionAmount;
         }
-        // For offline/catering: costTotal = foodCost (no extra costs)
         
-        // Calculate individual price (what customer would pay separately)
-        const pretIndividual = current.reduce((sum, p) => 
-          sum + (calculatorType === 'online' ? p.pretOnline : p.pretOffline), 0);
+        // Calculate individual price (handle null values)
+        const pretIndividual = current.reduce((sum, p) => {
+          const price = calculatorType === 'online' 
+            ? (p.pret_online || 0) 
+            : (p.pret_offline || 0);
+          return sum + price;
+        }, 0);
         
         // Profit and margin
         const profit = menuPrice - costTotal;
@@ -155,7 +163,7 @@ const MeniuVariatiiBuilder: React.FC<MeniuVariatiiBuilderProps> = ({ products, c
       if (sortBy === 'marjaProfit') return b.marjaProfit - a.marjaProfit;
       if (sortBy === 'profit') return b.profit - a.profit;
       return a.costTotal - b.costTotal;
-    }).slice(0, 100); // Show only top 100
+    }).slice(0, 100);
 
     setGeneratedCombinations(sorted);
   };
@@ -198,8 +206,10 @@ const MeniuVariatiiBuilder: React.FC<MeniuVariatiiBuilderProps> = ({ products, c
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {availableCategories.map(category => {
-            const categoryInfo = CATEGORIES[category];
             const count = productsByCategory[category]?.length || 0;
+            const icon = getCategoryIcon(category);
+            const label = getCategoryLabel(category);
+            const color = getCategoryColor(category);
             
             return (
               <button
@@ -207,11 +217,11 @@ const MeniuVariatiiBuilder: React.FC<MeniuVariatiiBuilderProps> = ({ products, c
                 onClick={() => handleAddCategory(category)}
                 disabled={count === 0}
                 className="flex flex-col items-center gap-2 p-4 rounded-2xl border-4 border-black hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ backgroundColor: categoryInfo.color }}
+                style={{ backgroundColor: color }}
               >
-                <span className="text-3xl">{categoryInfo.icon}</span>
+                <span className="text-3xl">{icon}</span>
                 <span className="text-xs font-black text-black text-center">
-                  {categoryInfo.label}
+                  {label}
                 </span>
                 <span className="text-xs font-bold text-gray-800">
                   {count} produse
@@ -229,16 +239,19 @@ const MeniuVariatiiBuilder: React.FC<MeniuVariatiiBuilderProps> = ({ products, c
             </p>
             <div className="flex flex-wrap gap-2">
               {categorySlots.map((slot, index) => {
-                const categoryInfo = CATEGORIES[slot.category];
+                const icon = getCategoryIcon(slot.category);
+                const label = getCategoryLabel(slot.category);
+                const color = getCategoryColor(slot.category);
+                
                 return (
                   <div 
                     key={slot.id}
                     className="flex items-center gap-2 px-3 py-2 rounded-xl border-2 border-black"
-                    style={{ backgroundColor: categoryInfo.color }}
+                    style={{ backgroundColor: color }}
                   >
-                    <span className="text-lg">{categoryInfo.icon}</span>
+                    <span className="text-lg">{icon}</span>
                     <span className="text-xs font-black text-black">
-                      #{index + 1} {categoryInfo.label} ({slot.selectedProducts.length})
+                      #{index + 1} {label} ({slot.selectedProducts.length})
                     </span>
                     <button
                       onClick={() => handleRemoveSlot(slot.id)}
@@ -266,16 +279,18 @@ const MeniuVariatiiBuilder: React.FC<MeniuVariatiiBuilderProps> = ({ products, c
 
           <div className="space-y-6">
             {categorySlots.map((slot, index) => {
-              const categoryInfo = CATEGORIES[slot.category];
+              const icon = getCategoryIcon(slot.category);
+              const label = getCategoryLabel(slot.category);
+              const color = getCategoryColor(slot.category);
               const categoryProducts = productsByCategory[slot.category] || [];
 
               return (
-                <div key={slot.id} className="p-4 rounded-2xl border-2 border-black" style={{ backgroundColor: `${categoryInfo.color}40` }}>
+                <div key={slot.id} className="p-4 rounded-2xl border-2 border-black" style={{ backgroundColor: `${color}40` }}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <span className="text-2xl">{categoryInfo.icon}</span>
+                      <span className="text-2xl">{icon}</span>
                       <span className="text-sm font-black text-black">
-                        #{index + 1} {categoryInfo.label}
+                        #{index + 1} {label}
                       </span>
                       <span className="text-xs font-bold text-gray-800">
                         ({slot.selectedProducts.length}/{categoryProducts.length} selectate)
@@ -313,7 +328,7 @@ const MeniuVariatiiBuilder: React.FC<MeniuVariatiiBuilderProps> = ({ products, c
                           <div className="flex justify-between items-center">
                             <span className="text-sm text-black">{product.nume}</span>
                             <span className="text-xs font-bold text-gray-800">
-                              {product.pretCost.toFixed(2)} lei
+                              {product.pret_cost.toFixed(2)} lei
                             </span>
                           </div>
                           {isSelected && (
@@ -358,14 +373,16 @@ const MeniuVariatiiBuilder: React.FC<MeniuVariatiiBuilderProps> = ({ products, c
           </div>
 
           {/* Online Cost Info */}
-          <div className="mb-6 p-4 bg-blue-100 rounded-2xl border-2 border-black">
-            <p className="text-sm font-black text-black mb-2">📦 COSTURI ONLINE INCLUSE:</p>
-            <p className="text-xs font-bold text-black">• Ambalaj: {AMBALAJ_COST.toFixed(2)} LEI / meniu</p>
-            <p className="text-xs font-bold text-black">• Comision aplicație: {(APP_COMMISSION * 100).toFixed(1)}% din preț</p>
-            <p className="text-xs font-bold text-gray-700 mt-2">
-              Total comision: {(menuPrice * APP_COMMISSION).toFixed(2)} LEI
-            </p>
-          </div>
+          {calculatorType === 'online' && (
+            <div className="mb-6 p-4 bg-blue-100 rounded-2xl border-2 border-black">
+              <p className="text-sm font-black text-black mb-2">📦 COSTURI ONLINE INCLUSE:</p>
+              <p className="text-xs font-bold text-black">• Ambalaj: {AMBALAJ_COST.toFixed(2)} LEI / meniu</p>
+              <p className="text-xs font-bold text-black">• Comision aplicație: {(APP_COMMISSION * 100).toFixed(1)}% din preț</p>
+              <p className="text-xs font-bold text-gray-700 mt-2">
+                Total comision: {(menuPrice * APP_COMMISSION).toFixed(2)} LEI
+              </p>
+            </div>
+          )}
 
           {/* Generate Button */}
           <button

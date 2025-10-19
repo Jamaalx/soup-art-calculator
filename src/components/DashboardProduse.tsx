@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import type { Product, ProductCategory } from '@/types';
-import { CATEGORIES, getCategoryIcon, getCategoryLabel } from '@/lib/data/categories';
+import type { Product } from '@/types';
+import { getCategoryIcon, getCategoryLabel, getCategoryColor } from '@/lib/data/categories';
 
 interface DashboardProduseProps {
   products: Product[];
@@ -11,9 +11,20 @@ interface DashboardProduseProps {
 
 const DashboardProduse: React.FC<DashboardProduseProps> = ({ products, calculatorType }) => {
   
-  const [expandedCategories, setExpandedCategories] = useState<Set<ProductCategory>>(new Set());
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
-  const toggleCategory = (category: ProductCategory) => {
+  // Get unique categories dynamically from products
+  const availableCategories = useMemo(() => {
+    const categories = new Set<string>();
+    products.forEach(p => {
+      if (p.is_active) {
+        categories.add(p.category);
+      }
+    });
+    return Array.from(categories).sort();
+  }, [products]);
+
+  const toggleCategory = (category: string) => {
     setExpandedCategories(prev => {
       const newSet = new Set(prev);
       if (newSet.has(category)) {
@@ -26,11 +37,7 @@ const DashboardProduse: React.FC<DashboardProduseProps> = ({ products, calculato
   };
 
   const expandAll = () => {
-    const allCategories: ProductCategory[] = [
-      'ciorbe', 'felPrincipal', 'garnituri', 'desert', 
-      'salate', 'bauturi', 'vinuri', 'placinte'
-    ];
-    setExpandedCategories(new Set(allCategories));
+    setExpandedCategories(new Set(availableCategories));
   };
 
   const collapseAll = () => {
@@ -38,28 +45,39 @@ const DashboardProduse: React.FC<DashboardProduseProps> = ({ products, calculato
   };
 
   const productsByCategory = useMemo(() => {
-    const grouped: Record<ProductCategory, Product[]> = {} as Record<ProductCategory, Product[]>;
-    const categories: ProductCategory[] = [
-      'ciorbe', 'felPrincipal', 'garnituri', 'desert', 
-      'salate', 'bauturi', 'vinuri', 'placinte'
-    ];
+    const grouped: Record<string, Product[]> = {};
     
-    categories.forEach(cat => {
-      grouped[cat] = products.filter(p => p.category === cat && p.isActive);
+    availableCategories.forEach(cat => {
+      grouped[cat] = products.filter(p => p.category === cat && p.is_active);
     });
     
     return grouped;
-  }, [products]);
+  }, [products, availableCategories]);
 
   const stats = useMemo(() => {
-    const allProducts = products.filter(p => p.isActive);
+    const allProducts = products.filter(p => p.is_active);
     
-    const avgCost = allProducts.reduce((sum, p) => sum + p.pretCost, 0) / allProducts.length;
-    const avgPriceOffline = allProducts.reduce((sum, p) => sum + p.pretOffline, 0) / allProducts.length;
-    const avgPriceOnline = allProducts.reduce((sum, p) => sum + p.pretOnline, 0) / allProducts.length;
+    if (allProducts.length === 0) {
+      return {
+        totalProducts: 0,
+        avgCost: 0,
+        avgPriceOffline: 0,
+        avgPriceOnline: 0,
+        avgMarginOffline: 0,
+        avgMarginOnline: 0
+      };
+    }
+
+    const avgCost = allProducts.reduce((sum, p) => sum + p.pret_cost, 0) / allProducts.length;
     
-    const avgMarginOffline = ((avgPriceOffline - avgCost) / avgCost) * 100;
-    const avgMarginOnline = ((avgPriceOnline - avgCost) / avgCost) * 100;
+    const avgPriceOffline = allProducts.reduce((sum, p) => 
+      sum + (p.pret_offline || 0), 0) / allProducts.length;
+    
+    const avgPriceOnline = allProducts.reduce((sum, p) => 
+      sum + (p.pret_online || 0), 0) / allProducts.length;
+    
+    const avgMarginOffline = avgCost > 0 ? ((avgPriceOffline - avgCost) / avgCost) * 100 : 0;
+    const avgMarginOnline = avgCost > 0 ? ((avgPriceOnline - avgCost) / avgCost) * 100 : 0;
 
     return {
       totalProducts: allProducts.length,
@@ -145,24 +163,25 @@ const DashboardProduse: React.FC<DashboardProduseProps> = ({ products, calculato
 
         <div className="space-y-4">
           {Object.entries(productsByCategory).map(([category, categoryProducts]) => {
-            const cat = category as ProductCategory;
-            const categoryInfo = CATEGORIES[cat];
-            const isExpanded = expandedCategories.has(cat);
+            const icon = getCategoryIcon(category);
+            const label = getCategoryLabel(category);
+            const color = getCategoryColor(category);
+            const isExpanded = expandedCategories.has(category);
 
             if (categoryProducts.length === 0) return null;
 
             return (
-              <div key={cat} className="border-2 border-black rounded-2xl overflow-hidden">
+              <div key={category} className="border-2 border-black rounded-2xl overflow-hidden">
                 {/* Category Header */}
                 <button
-                  onClick={() => toggleCategory(cat)}
+                  onClick={() => toggleCategory(category)}
                   className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-                  style={{ backgroundColor: `${categoryInfo.color}40` }}
+                  style={{ backgroundColor: `${color}40` }}
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-3xl">{categoryInfo.icon}</span>
+                    <span className="text-3xl">{icon}</span>
                     <div className="text-left">
-                      <p className="text-lg font-black text-black">{categoryInfo.label}</p>
+                      <p className="text-lg font-black text-black">{label}</p>
                       <p className="text-xs font-bold text-gray-700">
                         {categoryProducts.length} produse
                       </p>
@@ -172,7 +191,7 @@ const DashboardProduse: React.FC<DashboardProduseProps> = ({ products, calculato
                     <div className="text-right">
                       <p className="text-xs font-bold text-gray-700">COST MEDIU</p>
                       <p className="text-lg font-black text-black">
-                        {(categoryProducts.reduce((sum, p) => sum + p.pretCost, 0) / categoryProducts.length).toFixed(2)} LEI
+                        {(categoryProducts.reduce((sum, p) => sum + p.pret_cost, 0) / categoryProducts.length).toFixed(2)} LEI
                       </p>
                     </div>
                     <span className="text-2xl font-black text-black">
@@ -186,8 +205,12 @@ const DashboardProduse: React.FC<DashboardProduseProps> = ({ products, calculato
                   <div className="p-4 bg-white">
                     <div className="space-y-2">
                       {categoryProducts.map((product) => {
-                        const priceToUse = calculatorType === 'online' ? product.pretOnline : product.pretOffline;
-                        const margin = ((priceToUse - product.pretCost) / product.pretCost) * 100;
+                        const priceToUse = calculatorType === 'online' 
+                          ? (product.pret_online || 0) 
+                          : (product.pret_offline || 0);
+                        const margin = product.pret_cost > 0 
+                          ? ((priceToUse - product.pret_cost) / product.pret_cost) * 100 
+                          : 0;
 
                         return (
                           <div 
@@ -196,13 +219,13 @@ const DashboardProduse: React.FC<DashboardProduseProps> = ({ products, calculato
                           >
                             <div className="flex-1">
                               <p className="text-sm font-black text-black">{product.nume}</p>
-                              <p className="text-xs font-bold text-gray-700">{product.cantitate}</p>
+                              <p className="text-xs font-bold text-gray-700">{product.cantitate || 'N/A'}</p>
                             </div>
                             
                             <div className="flex gap-4 items-center">
                               <div className="text-right">
                                 <p className="text-xs font-bold text-gray-700">COST</p>
-                                <p className="text-sm font-black text-black">{product.pretCost.toFixed(2)} lei</p>
+                                <p className="text-sm font-black text-black">{product.pret_cost.toFixed(2)} lei</p>
                               </div>
                               
                               <div className="text-right">
@@ -241,18 +264,30 @@ const DashboardProduse: React.FC<DashboardProduseProps> = ({ products, calculato
           </h3>
           <div className="space-y-3">
             {products
-              .filter(p => p.isActive)
+              .filter(p => p.is_active)
               .sort((a, b) => {
-                const priceA = calculatorType === 'online' ? a.pretOnline : a.pretOffline;
-                const priceB = calculatorType === 'online' ? b.pretOnline : b.pretOffline;
-                const marginA = ((priceA - a.pretCost) / a.pretCost) * 100;
-                const marginB = ((priceB - b.pretCost) / b.pretCost) * 100;
+                const priceA = calculatorType === 'online' 
+                  ? (a.pret_online || 0) 
+                  : (a.pret_offline || 0);
+                const priceB = calculatorType === 'online' 
+                  ? (b.pret_online || 0) 
+                  : (b.pret_offline || 0);
+                const marginA = a.pret_cost > 0 
+                  ? ((priceA - a.pret_cost) / a.pret_cost) * 100 
+                  : 0;
+                const marginB = b.pret_cost > 0 
+                  ? ((priceB - b.pret_cost) / b.pret_cost) * 100 
+                  : 0;
                 return marginB - marginA;
               })
               .slice(0, 5)
               .map((product, index) => {
-                const price = calculatorType === 'online' ? product.pretOnline : product.pretOffline;
-                const margin = ((price - product.pretCost) / product.pretCost) * 100;
+                const price = calculatorType === 'online' 
+                  ? (product.pret_online || 0) 
+                  : (product.pret_offline || 0);
+                const margin = product.pret_cost > 0 
+                  ? ((price - product.pret_cost) / product.pret_cost) * 100 
+                  : 0;
                 
                 return (
                   <div key={product.id} className="p-3 rounded-xl border-2 border-black bg-green-100">
@@ -279,8 +314,8 @@ const DashboardProduse: React.FC<DashboardProduseProps> = ({ products, calculato
           </h3>
           <div className="space-y-3">
             {products
-              .filter(p => p.isActive)
-              .sort((a, b) => a.pretCost - b.pretCost)
+              .filter(p => p.is_active)
+              .sort((a, b) => a.pret_cost - b.pret_cost)
               .slice(0, 5)
               .map((product, index) => (
                 <div key={product.id} className="p-3 rounded-xl border-2 border-black bg-blue-100">
@@ -292,7 +327,7 @@ const DashboardProduse: React.FC<DashboardProduseProps> = ({ products, calculato
                         {getCategoryLabel(product.category)}
                       </p>
                     </div>
-                    <p className="text-xl font-black text-blue-600">{product.pretCost.toFixed(2)} lei</p>
+                    <p className="text-xl font-black text-blue-600">{product.pret_cost.toFixed(2)} lei</p>
                   </div>
                 </div>
               ))}
