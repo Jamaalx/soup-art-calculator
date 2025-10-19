@@ -49,7 +49,7 @@ const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products }) => {
   ];
 
   const productsByCategory = categories.reduce((acc, cat) => {
-    acc[cat] = products.filter(p => p.category === cat && p.isActive);
+    acc[cat] = products.filter(p => p.category === cat && p.is_active);
     return acc;
   }, {} as Record<ProductCategory, Product[]>);
 
