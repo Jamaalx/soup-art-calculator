@@ -102,7 +102,6 @@ export default function AdminProductsPage() {
       .from('products')
       .select('*')
       .eq('company_id', selectedCompanyId)
-      .is('user_id', null)
       .order('nume');
 
     if (error) {
