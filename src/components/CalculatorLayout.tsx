@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import MenuCalculator from './MenuCalculator';
+import MenuCalculator from './MenuOnlineCalculator';
 import MenuOfflineCalculator from './MenuOfflineCalculator';
 import MenuCateringCalculator from './MenuCateringCalculator';
 

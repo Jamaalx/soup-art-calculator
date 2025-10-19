@@ -1,25 +1,24 @@
 // src/types/index.ts
 
-export type ProductCategory = 
-  | 'ciorbe' 
-  | 'felPrincipal' 
-  | 'garnituri' 
-  | 'desert' 
-  | 'salate'
-  | 'bauturi' 
-  | 'vinuri'
-  | 'auxiliare' 
-  | 'placinte';
+// DYNAMIC: Categories come from database, no hardcoded values
+export type ProductCategory = string;
 
+// FIXED: Match the Product type from productService.ts
 export interface Product {
   id: string;
+  product_id: string;
   nume: string;
-  cantitate: string;
+  category_id: string;
+  company_id?: string | null;
+  cantitate?: string | null;  // FIXED: Made optional and nullable
+  pret_cost: number;
+  pret_offline?: number | null;  // FIXED: Made optional and nullable
+  pret_online?: number | null;   // FIXED: Made optional and nullable
+  is_active: boolean;
   pretCost: number;
-  pretOffline: number;
-  pretOnline: number;
-  category: ProductCategory;
-  isActive: boolean;
+  pretOffline?: number;  // FIXED: Made optional
+  pretOnline?: number;   // FIXED: Made optional
+  category: string;
 }
 
 // Category Metadata for UI display
