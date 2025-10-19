@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import type { Product, ProductCategory } from '@/types';
+import type { Product } from '@/types';
 
 // Database product type from Supabase (matching your actual schema)
 interface DbProduct {
@@ -18,7 +18,7 @@ interface DbProduct {
   created_at: string;
   updated_at: string;
   categories?: {
-    category_id: string; // This is the slug! "ciorbe", "felPrincipal", etc.
+    category_id: string;
     name: string;
     icon: string | null;
     color: string | null;
@@ -39,10 +39,8 @@ export function useProducts() {
       setLoading(true);
       setError(null);
 
-      // Create Supabase client
       const supabase = createClient();
 
-      // Fetch products with category join - RLS automatically filters by user_id = auth.uid()
       const { data, error: fetchError } = await supabase
         .from('products')
         .select(`
@@ -63,23 +61,25 @@ export function useProducts() {
         return;
       }
 
-      // Transform database records to Product type
+      // Transform database records to Product type - MATCH types/index.ts
       const transformedProducts: Product[] = (data || []).map((dbProduct: DbProduct) => {
-        // Get category_id (slug) from join - this is already the correct format!
-        const categorySlug = dbProduct.categories?.category_id || 'felPrincipal';
+        const categorySlug = dbProduct.categories?.category_id || dbProduct.category_id;
         
         return {
           id: dbProduct.id,
-          nume: dbProduct.nume || '',
-          cantitate: dbProduct.cantitate || '',
-          pretCost: dbProduct.pret_cost || 0,
-          pretOffline: dbProduct.pret_offline || 0,
-          pretOnline: dbProduct.pret_online || 0,
-          pretCatering: dbProduct.pret_offline || 0, // Use offline price as catering fallback
-          category: categorySlug as ProductCategory, // category_id IS the slug
-          isActive: dbProduct.is_active ?? true,
-          createdAt: dbProduct.created_at || new Date().toISOString(),
-          updatedAt: dbProduct.updated_at || new Date().toISOString()
+          product_id: dbProduct.product_id,
+          nume: dbProduct.nume,
+          category_id: dbProduct.category_id,
+          company_id: dbProduct.company_id,
+          cantitate: dbProduct.cantitate,
+          pret_cost: dbProduct.pret_cost,
+          pret_offline: dbProduct.pret_offline,
+          pret_online: dbProduct.pret_online,
+          is_active: dbProduct.is_active,
+          pretCost: dbProduct.pret_cost,
+          pretOffline: dbProduct.pret_offline ?? undefined,
+          pretOnline: dbProduct.pret_online ?? undefined,
+          category: categorySlug
         };
       });
 
