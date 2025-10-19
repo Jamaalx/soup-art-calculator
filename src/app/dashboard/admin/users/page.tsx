@@ -32,7 +32,11 @@ export default function AdminUsersPage() {
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<string>('all');
+  const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>('all');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all');
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const router = useRouter();
   const supabase = createClient();
 
@@ -43,6 +47,14 @@ export default function AdminUsersPage() {
     phone: '',
     role: 'user' as 'user' | 'admin',
     company_id: ''
+  });
+
+  const [editFormData, setEditFormData] = useState({
+    full_name: '',
+    phone: '',
+    role: 'user' as 'user' | 'admin',
+    company_id: '',
+    is_active: true
   });
 
   useEffect(() => {
@@ -82,7 +94,10 @@ export default function AdminUsersPage() {
       .order('company_name');
     
     if (!error && data) {
+      console.log('✅ Loaded companies:', data.length, data);
       setCompanies(data);
+    } else {
+      console.error('❌ Error loading companies:', error);
     }
   };
 
@@ -95,11 +110,12 @@ export default function AdminUsersPage() {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching users:', error);
+      console.error('❌ Error fetching users:', error);
       alert('Error loading users: ' + error.message);
     } else {
-      console.log('✅ Loaded users:', data?.length);
-      setUsers(data || []);
+      console.log('✅ Loaded users:', data?.length, data);
+      // Force state update by creating a new array
+      setUsers(data ? [...data] : []);
     }
     
     setLoading(false);
@@ -140,11 +156,10 @@ export default function AdminUsersPage() {
         throw new Error(result.error || 'Failed to create user');
       }
 
-      alert('✅ User created successfully! ' + 
-            (formData.company_id ? 'Templates will be assigned automatically.' : 'No templates assigned.'));
+      alert('✅ User created successfully!');
       setIsModalOpen(false);
       resetForm();
-      fetchUsers();
+      await fetchUsers();
 
     } catch (error: any) {
       console.error('Error creating user:', error);
@@ -152,31 +167,69 @@ export default function AdminUsersPage() {
     }
   };
 
-  const handleUpdateCompany = async (userId: string, newCompanyId: string | null) => {
-    if (userId === currentUserId) {
-      alert('You cannot change your own company!');
+  const handleEditUser = (user: UserProfile) => {
+    console.log('📝 Editing user:', user);
+    setEditingUser(user);
+    setEditFormData({
+      full_name: user.full_name || '',
+      phone: user.phone || '',
+      role: user.role as 'user' | 'admin',
+      company_id: user.company_id || '',
+      is_active: user.is_active
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingUser) return;
+
+    if (editingUser.id === currentUserId && editFormData.role !== editingUser.role) {
+      alert('You cannot change your own role!');
       return;
     }
 
-    const confirmMessage = newCompanyId
-      ? 'Are you sure you want to change this user\'s company? This will NOT affect their existing data.'
-      : 'Are you sure you want to remove this user from their company?';
+    console.log('📤 Updating user ID:', editingUser.id);
+    console.log('📋 New company_id:', editFormData.company_id || 'NULL');
 
-    if (!confirm(confirmMessage)) return;
+    // Prepare update data
+    // Note: company_name will be auto-set by database trigger
+    const updateData = {
+      full_name: editFormData.full_name || null,
+      phone: editFormData.phone || null,
+      role: editFormData.role,
+      company_id: editFormData.company_id || null,
+      is_active: editFormData.is_active,
+      updated_at: new Date().toISOString()
+    };
 
-    const { error } = await supabase
+    console.log('📤 Sending to Supabase:', updateData);
+
+    const { data, error } = await supabase
       .from('profiles')
-      .update({ 
-        company_id: newCompanyId,
-        company_name: newCompanyId ? companies.find(c => c.id === newCompanyId)?.company_name : null
-      })
-      .eq('id', userId);
+      .update(updateData)
+      .eq('id', editingUser.id)
+      .select();
+
+    console.log('📥 Supabase response:', { 
+      data, 
+      error,
+      rowsUpdated: data?.length || 0
+    });
 
     if (error) {
-      alert('Error updating company: ' + error.message);
+      console.error('❌ Update failed:', error);
+      alert('Error updating user: ' + error.message);
+    } else if (!data || data.length === 0) {
+      console.warn('⚠️ Update returned 0 rows - RLS might be blocking');
+      alert('⚠️ Update blocked by security policies. Check RLS policies.');
     } else {
-      alert('✅ User company updated!');
-      fetchUsers();
+      console.log('✅ User updated successfully:', data[0]);
+      alert('✅ User updated successfully!\n\nCompany: ' + (data[0].company_name || 'None'));
+      setIsEditModalOpen(false);
+      setEditingUser(null);
+      await fetchUsers();
     }
   };
 
@@ -195,14 +248,17 @@ export default function AdminUsersPage() {
 
     const { error } = await supabase
       .from('profiles')
-      .update({ role: newRole })
+      .update({ 
+        role: newRole,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', userId);
 
     if (error) {
       alert('Error updating role: ' + error.message);
     } else {
       alert(`✅ User role updated to ${newRole}!`);
-      fetchUsers();
+      await fetchUsers();
     }
   };
 
@@ -215,20 +271,23 @@ export default function AdminUsersPage() {
     const newStatus = !currentStatus;
     const confirmMessage = newStatus 
       ? 'Are you sure you want to activate this user?' 
-      : 'Are you sure you want to deactivate this user?';
+      : 'Are you sure you want to deactivate this user? They will not be able to log in.';
 
     if (!confirm(confirmMessage)) return;
 
     const { error } = await supabase
       .from('profiles')
-      .update({ is_active: newStatus })
+      .update({ 
+        is_active: newStatus,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', userId);
 
     if (error) {
       alert('Error updating status: ' + error.message);
     } else {
       alert(`✅ User ${newStatus ? 'activated' : 'deactivated'}!`);
-      fetchUsers();
+      await fetchUsers();
     }
   };
 
@@ -238,7 +297,7 @@ export default function AdminUsersPage() {
       return;
     }
 
-    if (!confirm('Are you sure you want to delete this user? This action cannot be undone!')) {
+    if (!confirm('⚠️ Are you sure you want to delete this user?\n\nThis will:\n• Delete their account\n• Delete all their products\n• Delete all their categories\n• This action CANNOT be undone!')) {
       return;
     }
 
@@ -254,7 +313,7 @@ export default function AdminUsersPage() {
       }
 
       alert('✅ User deleted successfully!');
-      fetchUsers();
+      await fetchUsers();
 
     } catch (error: any) {
       console.error('Error deleting user:', error);
@@ -280,14 +339,21 @@ export default function AdminUsersPage() {
     const matchesCompany = selectedCompanyFilter === 'all' ||
       (selectedCompanyFilter === 'none' && !user.company_id) ||
       user.company_id === selectedCompanyFilter;
+
+    const matchesRole = selectedRoleFilter === 'all' || user.role === selectedRoleFilter;
     
-    return matchesSearch && matchesCompany;
+    const matchesStatus = selectedStatusFilter === 'all' ||
+      (selectedStatusFilter === 'active' && user.is_active) ||
+      (selectedStatusFilter === 'inactive' && !user.is_active);
+    
+    return matchesSearch && matchesCompany && matchesRole && matchesStatus;
   });
 
   const stats = {
     total: users.length,
     admins: users.filter(u => u.role === 'admin').length,
     active: users.filter(u => u.is_active).length,
+    inactive: users.filter(u => !u.is_active).length,
     withCompany: users.filter(u => u.company_id).length,
     noCompany: users.filter(u => !u.company_id).length
   };
@@ -304,7 +370,8 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto p-6">
+      {/* Header */}
       <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl shadow-lg p-6 mb-6 text-white">
         <div className="flex justify-between items-center">
           <div>
@@ -317,14 +384,15 @@ export default function AdminUsersPage() {
           </div>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="px-6 py-3 bg-white text-indigo-600 rounded-xl font-bold hover:bg-gray-100 shadow-lg transition"
+            className="px-6 py-3 bg-white text-indigo-600 rounded-xl font-bold hover:bg-gray-100 shadow-lg transition transform hover:scale-105"
           >
             ➕ Create User
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
         <div className="bg-white rounded-xl p-4 shadow-md border-2 border-gray-200">
           <p className="text-sm text-gray-600 mb-1">Total Users</p>
           <p className="text-3xl font-black text-gray-900">{stats.total}</p>
@@ -337,6 +405,10 @@ export default function AdminUsersPage() {
           <p className="text-sm text-green-700 mb-1">Active</p>
           <p className="text-3xl font-black text-green-700">{stats.active}</p>
         </div>
+        <div className="bg-red-50 rounded-xl p-4 shadow-md border-2 border-red-200">
+          <p className="text-sm text-red-700 mb-1">Inactive</p>
+          <p className="text-3xl font-black text-red-700">{stats.inactive}</p>
+        </div>
         <div className="bg-blue-50 rounded-xl p-4 shadow-md border-2 border-blue-200">
           <p className="text-sm text-blue-700 mb-1">With Company</p>
           <p className="text-3xl font-black text-blue-700">{stats.withCompany}</p>
@@ -347,8 +419,9 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
+      {/* Filters */}
       <div className="bg-white rounded-xl shadow-md p-4 mb-6 border-2 border-gray-200">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <input
             type="text"
             placeholder="🔍 Search by name or email..."
@@ -361,17 +434,36 @@ export default function AdminUsersPage() {
             onChange={(e) => setSelectedCompanyFilter(e.target.value)}
             className="px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition"
           >
-            <option value="all">All Companies</option>
-            <option value="none">No Company</option>
+            <option value="all">🏢 All Companies</option>
+            <option value="none">🚫 No Company</option>
             {companies.map(company => (
               <option key={company.id} value={company.id}>
                 {company.company_name}
               </option>
             ))}
           </select>
+          <select
+            value={selectedRoleFilter}
+            onChange={(e) => setSelectedRoleFilter(e.target.value)}
+            className="px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition"
+          >
+            <option value="all">👥 All Roles</option>
+            <option value="admin">👑 Admins Only</option>
+            <option value="user">👤 Users Only</option>
+          </select>
+          <select
+            value={selectedStatusFilter}
+            onChange={(e) => setSelectedStatusFilter(e.target.value)}
+            className="px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition"
+          >
+            <option value="all">📊 All Status</option>
+            <option value="active">✅ Active Only</option>
+            <option value="inactive">❌ Inactive Only</option>
+          </select>
         </div>
       </div>
 
+      {/* Users Table */}
       <div className="bg-white rounded-2xl shadow-lg border-2 border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -390,7 +482,7 @@ export default function AdminUsersPage() {
                   <td colSpan={5} className="px-6 py-12 text-center">
                     <p className="text-gray-500 text-lg font-bold">No users found</p>
                     <p className="text-gray-400 text-sm mt-2">
-                      {searchTerm || selectedCompanyFilter !== 'all' 
+                      {searchTerm || selectedCompanyFilter !== 'all' || selectedRoleFilter !== 'all' || selectedStatusFilter !== 'all'
                         ? 'Try adjusting your filters' 
                         : 'Click "Create User" to add your first user'}
                     </p>
@@ -427,39 +519,25 @@ export default function AdminUsersPage() {
                     </td>
 
                     <td className="px-6 py-4">
-                      <select
-                        value={user.company_id || ''}
-                        onChange={(e) => handleUpdateCompany(user.id, e.target.value || null)}
-                        disabled={user.id === currentUserId}
-                        className={`px-3 py-2 border-2 rounded-lg text-sm font-bold focus:border-blue-500 focus:outline-none ${
-                          user.id === currentUserId ? 'opacity-50 cursor-not-allowed' : ''
-                        } ${
-                          user.company_id 
-                            ? 'bg-blue-50 border-blue-200 text-blue-900'
-                            : 'bg-gray-50 border-gray-200 text-gray-700'
-                        }`}
-                      >
-                        <option value="">No Company</option>
-                        {companies.map(company => (
-                          <option key={company.id} value={company.id}>
-                            🏢 {company.company_name}
-                          </option>
-                        ))}
-                      </select>
+                      {user.company_name ? (
+                        <span className="px-3 py-1 bg-blue-100 border-2 border-blue-300 rounded-lg text-sm font-bold text-blue-900">
+                          🏢 {user.company_name}
+                        </span>
+                      ) : (
+                        <span className="px-3 py-1 bg-gray-100 border-2 border-gray-300 rounded-lg text-sm font-bold text-gray-600">
+                          No Company
+                        </span>
+                      )}
                     </td>
 
                     <td className="px-6 py-4">
-                      <button
-                        onClick={() => handleToggleRole(user.id, user.role)}
-                        disabled={user.id === currentUserId}
-                        className={`px-4 py-2 rounded-lg font-bold text-sm transition ${
-                          user.role === 'admin'
-                            ? 'bg-purple-100 text-purple-800 hover:bg-purple-200'
-                            : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                        } ${user.id === currentUserId ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      >
+                      <span className={`px-4 py-2 rounded-lg font-bold text-sm ${
+                        user.role === 'admin'
+                          ? 'bg-purple-100 text-purple-800 border-2 border-purple-300'
+                          : 'bg-gray-100 text-gray-800 border-2 border-gray-300'
+                      }`}>
                         {user.role === 'admin' ? '👑 Admin' : '👤 User'}
-                      </button>
+                      </span>
                     </td>
 
                     <td className="px-6 py-4">
@@ -475,10 +553,11 @@ export default function AdminUsersPage() {
                     <td className="px-6 py-4">
                       <div className="flex justify-center gap-2">
                         <button
-                          onClick={() => router.push(`/dashboard/admin/users/assign?user=${user.id}`)}
+                          onClick={() => handleEditUser(user)}
                           className="px-3 py-2 bg-blue-500 text-white rounded-lg font-bold text-xs hover:bg-blue-600 transition"
+                          title="Edit User"
                         >
-                          📦 Assign
+                          ✏️ Edit
                         </button>
                         <button
                           onClick={() => handleToggleActive(user.id, user.is_active)}
@@ -488,8 +567,9 @@ export default function AdminUsersPage() {
                               ? 'bg-orange-500 text-white hover:bg-orange-600'
                               : 'bg-green-500 text-white hover:bg-green-600'
                           } ${user.id === currentUserId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          title={user.is_active ? 'Deactivate User' : 'Activate User'}
                         >
-                          {user.is_active ? 'Disable' : 'Enable'}
+                          {user.is_active ? '🔒' : '🔓'}
                         </button>
                         <button
                           onClick={() => handleDeleteUser(user.id)}
@@ -497,6 +577,7 @@ export default function AdminUsersPage() {
                           className={`px-3 py-2 bg-red-500 text-white rounded-lg font-bold text-xs hover:bg-red-600 transition ${
                             user.id === currentUserId ? 'opacity-50 cursor-not-allowed' : ''
                           }`}
+                          title="Delete User"
                         >
                           🗑️
                         </button>
@@ -510,23 +591,25 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
+      {/* Info Box */}
       <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 mt-6">
         <div className="flex items-start gap-4">
           <span className="text-3xl">💡</span>
           <div>
-            <h3 className="font-black text-blue-900 mb-2">How Company Assignment Works</h3>
+            <h3 className="font-black text-blue-900 mb-2">How User Management Works</h3>
             <ul className="space-y-1 text-sm text-blue-800">
-              <li>• Users <strong>with a company</strong> can access company product/category templates</li>
-              <li>• Users <strong>without a company</strong> start with empty data and create their own</li>
-              <li>• Click <strong>"Assign"</strong> button to copy templates to a specific user</li>
-              <li>• Changing a user's company does NOT affect their existing data</li>
-              <li>• Each user has isolated data regardless of company membership</li>
-              <li>• Admins can manage templates for all companies</li>
+              <li>• <strong>Edit</strong>: Update user details, company assignment, role, and status</li>
+              <li>• <strong>Toggle Status</strong>: Activate/deactivate users (prevents login when inactive)</li>
+              <li>• <strong>Delete</strong>: Permanently remove user and all their data (cannot be undone)</li>
+              <li>• Each user has isolated data via RLS policies</li>
+              <li>• Users can only see their own products and categories</li>
+              <li>• Admins can manage all users but cannot see their data</li>
             </ul>
           </div>
         </div>
       </div>
 
+      {/* Create User Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full my-8">
@@ -588,18 +671,13 @@ export default function AdminUsersPage() {
                   onChange={(e) => setFormData({ ...formData, company_id: e.target.value })}
                   className="w-full px-4 py-2 border-2 rounded-lg focus:border-blue-500 focus:outline-none"
                 >
-                  <option value="">No company (User creates own data)</option>
+                  <option value="">No company</option>
                   {companies.map(company => (
                     <option key={company.id} value={company.id}>
                       🏢 {company.company_name}
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  {formData.company_id 
-                    ? 'Templates can be assigned later via "Assign" button' 
-                    : 'User will start with empty products/categories'}
-                </p>
               </div>
 
               <div>
@@ -614,12 +692,6 @@ export default function AdminUsersPage() {
                 </select>
               </div>
 
-              <div className="bg-indigo-50 border-2 border-indigo-200 rounded-lg p-3">
-                <p className="text-xs text-indigo-800">
-                  💡 Email will be auto-confirmed. After creation, use the "Assign" button to copy company templates to this user.
-                </p>
-              </div>
-
               <div className="flex gap-3 pt-4">
                 <button
                   type="submit"
@@ -632,6 +704,119 @@ export default function AdminUsersPage() {
                   onClick={() => {
                     setIsModalOpen(false);
                     resetForm();
+                  }}
+                  className="px-6 py-3 bg-gray-300 text-gray-700 rounded-lg font-bold hover:bg-gray-400 transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {isEditModalOpen && editingUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full my-8">
+            <h2 className="text-2xl font-black mb-6">Edit User</h2>
+
+            <form onSubmit={handleUpdateUser} className="space-y-4">
+              <div className="bg-gray-100 rounded-lg p-3 mb-4">
+                <p className="text-sm text-gray-600">Email (cannot be changed)</p>
+                <p className="font-bold text-gray-900">{editingUser.email}</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold mb-2">Full Name</label>
+                <input
+                  type="text"
+                  value={editFormData.full_name}
+                  onChange={(e) => setEditFormData({ ...editFormData, full_name: e.target.value })}
+                  className="w-full px-4 py-2 border-2 rounded-lg focus:border-blue-500 focus:outline-none"
+                  placeholder="John Doe"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold mb-2">Phone</label>
+                <input
+                  type="tel"
+                  value={editFormData.phone}
+                  onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                  className="w-full px-4 py-2 border-2 rounded-lg focus:border-blue-500 focus:outline-none"
+                  placeholder="+40 123 456 789"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold mb-2">Company</label>
+                <select
+                  value={editFormData.company_id}
+                  onChange={(e) => setEditFormData({ ...editFormData, company_id: e.target.value })}
+                  disabled={editingUser.id === currentUserId}
+                  className={`w-full px-4 py-2 border-2 rounded-lg focus:border-blue-500 focus:outline-none ${
+                    editingUser.id === currentUserId ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                >
+                  <option value="">No company</option>
+                  {companies.map(company => (
+                    <option key={company.id} value={company.id}>
+                      🏢 {company.company_name}
+                    </option>
+                  ))}
+                </select>
+                {editingUser.id === currentUserId && (
+                  <p className="text-xs text-orange-600 mt-1">You cannot change your own company</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold mb-2">Role</label>
+                <select
+                  value={editFormData.role}
+                  onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value as 'user' | 'admin' })}
+                  disabled={editingUser.id === currentUserId}
+                  className={`w-full px-4 py-2 border-2 rounded-lg focus:border-blue-500 focus:outline-none ${
+                    editingUser.id === currentUserId ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                >
+                  <option value="user">👤 User</option>
+                  <option value="admin">👑 Admin</option>
+                </select>
+                {editingUser.id === currentUserId && (
+                  <p className="text-xs text-orange-600 mt-1">You cannot change your own role</p>
+                )}
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={editFormData.is_active}
+                    onChange={(e) => setEditFormData({ ...editFormData, is_active: e.target.checked })}
+                    disabled={editingUser.id === currentUserId}
+                    className="w-5 h-5"
+                  />
+                  <span className="text-sm font-bold">Active User</span>
+                </label>
+                {editingUser.id === currentUserId && (
+                  <p className="text-xs text-orange-600 mt-1">You cannot deactivate yourself</p>
+                )}
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition"
+                >
+                  💾 Save Changes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setEditingUser(null);
                   }}
                   className="px-6 py-3 bg-gray-300 text-gray-700 rounded-lg font-bold hover:bg-gray-400 transition"
                 >

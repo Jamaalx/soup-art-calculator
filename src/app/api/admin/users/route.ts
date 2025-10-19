@@ -1,113 +1,28 @@
+// src/app/api/admin/users/route.ts
+
+import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase/admin';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
 
-// GET - List all users
-export async function GET(request: NextRequest) {
-  try {
-    // Verify admin access from client session
-    const supabase = await createServerSupabaseClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+// Create Supabase admin client (bypasses RLS)
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
     }
-
-    // Check if user is admin
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (profile?.role !== 'admin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    // Get all users using admin client
-    const { data: { users: authUsers }, error: authError } = await supabaseAdmin.auth.admin.listUsers();
-
-    if (authError) {
-      throw authError;
-    }
-
-    // Get all profiles
-    const { data: profiles } = await supabaseAdmin
-      .from('profiles')
-      .select('*');
-
-    const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
-
-    // Combine auth users with profiles and create missing profiles
-    const combinedUsers = await Promise.all(
-      authUsers.map(async (authUser) => {
-        let profile = profileMap.get(authUser.id);
-        
-        // If profile doesn't exist, create it
-        if (!profile) {
-          const { data: newProfile, error: profileError } = await supabaseAdmin
-            .from('profiles')
-            .insert({
-              id: authUser.id,
-              email: authUser.email || '',
-              role: 'user',
-              full_name: authUser.user_metadata?.full_name || null,
-              is_active: true
-            })
-            .select()
-            .single();
-
-          if (!profileError && newProfile) {
-            profile = newProfile;
-          }
-        }
-
-        return {
-          id: authUser.id,
-          email: authUser.email || 'Unknown',
-          role: profile?.role || 'user',
-          full_name: profile?.full_name || authUser.user_metadata?.full_name || null,
-          created_at: authUser.created_at,
-          last_sign_in_at: authUser.last_sign_in_at
-        };
-      })
-    );
-
-    return NextResponse.json({ users: combinedUsers });
-  } catch (error: any) {
-    console.error('Error listing users:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch users' },
-      { status: 500 }
-    );
   }
-}
+);
 
-// POST - Create new user
+// POST: Create new user
 export async function POST(request: NextRequest) {
   try {
-    // Verify admin access
-    const supabase = await createServerSupabaseClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (profile?.role !== 'admin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    // Get request body
     const body = await request.json();
-    const { email, password, full_name, role, company_id } = body;
+    const { email, password, full_name, phone, role, company_id } = body;
 
+    // Validate required fields
     if (!email || !password) {
       return NextResponse.json(
         { error: 'Email and password are required' },
@@ -115,161 +30,164 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate company exists if provided
-    if (company_id) {
-      const { data: company } = await supabaseAdmin
-        .from('companies')
-        .select('id, company_name')
-        .eq('id', company_id)
-        .single();
-
-      if (!company) {
-        return NextResponse.json(
-          { error: 'Invalid company ID' },
-          { status: 400 }
-        );
-      }
+    if (password.length < 6) {
+      return NextResponse.json(
+        { error: 'Password must be at least 6 characters' },
+        { status: 400 }
+      );
     }
 
-    // Create user using admin client
-    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+    console.log('🔧 Creating user with email:', email);
+
+    // Step 1: Create auth user using admin client
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
-      email_confirm: true,
+      email_confirm: true, // Auto-confirm email
       user_metadata: {
-        full_name: full_name || null
+        full_name: full_name || null,
+        phone: phone || null
       }
     });
 
-    if (createError) {
-      throw createError;
+    if (authError) {
+      console.error('❌ Auth error:', authError);
+      return NextResponse.json(
+        { error: `Failed to create auth user: ${authError.message}` },
+        { status: 500 }
+      );
     }
 
-    if (!newUser.user) {
-      throw new Error('User creation failed');
+    if (!authData.user) {
+      return NextResponse.json(
+        { error: 'User creation failed - no user returned' },
+        { status: 500 }
+      );
     }
 
-    // Get company name if company_id provided
-    let companyName = null;
+    console.log('✅ Auth user created:', authData.user.id);
+
+    // Step 2: Get company name if company_id provided
+    let company_name = null;
     if (company_id) {
-      const { data: company } = await supabaseAdmin
+      const { data: companyData } = await supabaseAdmin
         .from('companies')
         .select('company_name')
         .eq('id', company_id)
         .single();
-      companyName = company?.company_name || null;
+      
+      company_name = companyData?.company_name || null;
     }
 
-    // Create profile with company assignment
+    // Step 3: Create profile (this should trigger automatically, but let's ensure it exists)
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
-      .insert({
-        id: newUser.user.id,
-        email: newUser.user.email || '',
-        role: role || 'user',
+      .upsert({
+        id: authData.user.id, // Use the auth user ID
+        email: email,
         full_name: full_name || null,
+        phone: phone || null,
+        role: role || 'user',
         company_id: company_id || null,
-        company_name: companyName,
-        is_active: true
+        company_name: company_name,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'id' // If profile exists, update it
       });
 
     if (profileError) {
-      console.error('Profile creation error:', profileError);
-      await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
-      throw profileError;
+      console.error('❌ Profile error:', profileError);
+      
+      // Try to delete the auth user if profile creation failed
+      await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+      
+      return NextResponse.json(
+        { error: `Failed to create profile: ${profileError.message}` },
+        { status: 500 }
+      );
     }
 
-    // If user has company, copy company products and categories to user
+    console.log('✅ Profile created for user:', authData.user.id);
+
+    // Step 4: If company_id provided, copy templates (optional)
     if (company_id) {
-      // Copy company products to user
-      const { data: companyProducts } = await supabaseAdmin
-        .from('products')
-        .select('*')
-        .eq('company_id', company_id)
-        .is('user_id', null); // Get template products
+      try {
+        // Copy company products to user
+        const { data: companyProducts } = await supabaseAdmin
+          .from('products')
+          .select('*')
+          .eq('company_id', company_id);
 
-      if (companyProducts && companyProducts.length > 0) {
-        const userProducts = companyProducts.map(p => ({
-          product_id: p.product_id,
-          nume: p.nume,
-          category_id: p.category_id,
-          cantitate: p.cantitate,
-          pret_cost: p.pret_cost,
-          pret_offline: p.pret_offline,
-          pret_online: p.pret_online,
-          is_active: p.is_active,
-          user_id: newUser.user.id,
-          company_id: company_id
-        }));
+        if (companyProducts && companyProducts.length > 0) {
+          const userProducts = companyProducts.map(product => ({
+            ...product,
+            id: undefined, // Remove old ID, let Supabase generate new one
+            product_id: undefined, // Remove old product_id
+            user_id: authData.user.id, // Set to new user
+            company_id: null, // Clear company_id (user owns these now)
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }));
 
-        await supabaseAdmin.from('products').insert(userProducts);
-      }
+          await supabaseAdmin
+            .from('products')
+            .insert(userProducts);
 
-      // Copy company categories to user
-      const { data: companyCategories } = await supabaseAdmin
-        .from('categories')
-        .select('*')
-        .eq('company_id', company_id)
-        .is('user_id', null); // Get template categories
+          console.log(`✅ Copied ${userProducts.length} products to user`);
+        }
 
-      if (companyCategories && companyCategories.length > 0) {
-        const userCategories = companyCategories.map(c => ({
-          category_id: c.category_id,
-          name: c.name,
-          icon: c.icon,
-          color: c.color,
-          sort_order: c.sort_order,
-          is_active: c.is_active,
-          user_id: newUser.user.id,
-          company_id: company_id
-        }));
+        // Copy company categories to user
+        const { data: companyCategories } = await supabaseAdmin
+          .from('categories')
+          .select('*')
+          .eq('company_id', company_id);
 
-        await supabaseAdmin.from('categories').insert(userCategories);
+        if (companyCategories && companyCategories.length > 0) {
+          const userCategories = companyCategories.map(category => ({
+            ...category,
+            id: undefined, // Remove old ID
+            category_id: undefined, // Remove old category_id
+            user_id: authData.user.id, // Set to new user
+            company_id: null, // Clear company_id
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }));
+
+          await supabaseAdmin
+            .from('categories')
+            .insert(userCategories);
+
+          console.log(`✅ Copied ${userCategories.length} categories to user`);
+        }
+      } catch (copyError) {
+        console.error('⚠️ Error copying templates:', copyError);
+        // Don't fail the whole request if template copying fails
       }
     }
 
     return NextResponse.json({
       success: true,
       user: {
-        id: newUser.user.id,
-        email: newUser.user.email,
-        role: role || 'user',
-        full_name: full_name || null,
-        company_id: company_id || null,
-        company_name: companyName
+        id: authData.user.id,
+        email: authData.user.email,
+        role: role || 'user'
       }
-    });
+    }, { status: 201 });
+
   } catch (error: any) {
-    console.error('Error creating user:', error);
+    console.error('❌ Unexpected error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to create user' },
+      { error: error.message || 'Internal server error' },
       { status: 500 }
     );
   }
 }
 
-// DELETE - Delete user
+// DELETE: Delete user
 export async function DELETE(request: NextRequest) {
   try {
-    // Verify admin access
-    const supabase = await createServerSupabaseClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (profile?.role !== 'admin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    // Get user ID from query params
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
 
@@ -280,26 +198,64 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Prevent self-deletion
-    if (userId === user.id) {
+    console.log('🗑️ Deleting user:', userId);
+
+    // Step 1: Delete user's products
+    const { error: productsError } = await supabaseAdmin
+      .from('products')
+      .delete()
+      .eq('user_id', userId);
+
+    if (productsError) {
+      console.error('⚠️ Error deleting products:', productsError);
+    }
+
+    // Step 2: Delete user's categories
+    const { error: categoriesError } = await supabaseAdmin
+      .from('categories')
+      .delete()
+      .eq('user_id', userId);
+
+    if (categoriesError) {
+      console.error('⚠️ Error deleting categories:', categoriesError);
+    }
+
+    // Step 3: Delete profile
+    const { error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .delete()
+      .eq('id', userId);
+
+    if (profileError) {
+      console.error('❌ Error deleting profile:', profileError);
       return NextResponse.json(
-        { error: 'Cannot delete your own account' },
-        { status: 400 }
+        { error: `Failed to delete profile: ${profileError.message}` },
+        { status: 500 }
       );
     }
 
-    // Delete user using admin client
-    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    // Step 4: Delete auth user
+    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
-    if (deleteError) {
-      throw deleteError;
+    if (authError) {
+      console.error('❌ Error deleting auth user:', authError);
+      return NextResponse.json(
+        { error: `Failed to delete auth user: ${authError.message}` },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json({ success: true });
+    console.log('✅ User deleted successfully:', userId);
+
+    return NextResponse.json({
+      success: true,
+      message: 'User deleted successfully'
+    });
+
   } catch (error: any) {
-    console.error('Error deleting user:', error);
+    console.error('❌ Unexpected error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to delete user' },
+      { error: error.message || 'Internal server error' },
       { status: 500 }
     );
   }

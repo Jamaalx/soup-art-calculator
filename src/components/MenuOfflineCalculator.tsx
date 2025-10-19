@@ -1,17 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  CIORBE, 
-  FELPRINCIPAL, 
-  GARNITURI, 
-  DESERT, 
-  PLACINTE, 
-  BAUTURI, 
-  VINURI, 
-  AUXILIARE,
-  SALATE 
-} from '@/lib/data/products';
+import { useProducts } from '@/hooks/useProducts';
 import DashboardProduse from './DashboardProduse';
 import MeniuFixBuilder from './MenuFixBuilder';
 import MeniuVariatiiBuilder from './MeniuVariatiiBuilder';
@@ -20,19 +10,61 @@ type ViewMode = 'dashboard' | 'fix' | 'variatii';
 
 const MenuOfflineCalculator = () => {
   const [activeView, setActiveView] = useState<ViewMode>('dashboard');
+  
+  // Fetch products from Supabase (respects RLS)
+  const { products, loading, error } = useProducts();
 
-  // Combine ALL products from ALL categories
-  const allProducts = [
-    ...CIORBE,
-    ...FELPRINCIPAL,
-    ...GARNITURI,
-    ...DESERT,
-    ...PLACINTE,
-    ...BAUTURI,
-    ...VINURI,
-    ...AUXILIARE,
-    ...SALATE
-  ];
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-100 via-white to-pink-100">
+        <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-black">
+          <div className="flex items-center gap-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent"></div>
+            <p className="text-xl font-black text-black">Se încarcă produsele...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-100 via-white to-pink-100">
+        <div className="bg-red-100 rounded-3xl shadow-2xl p-8 border-4 border-black max-w-lg">
+          <h2 className="text-2xl font-black text-black mb-4">⚠️ EROARE</h2>
+          <p className="text-sm font-bold text-black mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 bg-black text-white rounded-xl font-bold hover:bg-gray-800"
+          >
+            🔄 REÎNCEARCĂ
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // No products state
+  if (products.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-100 via-white to-pink-100">
+        <div className="bg-yellow-100 rounded-3xl shadow-2xl p-8 border-4 border-black max-w-lg text-center">
+          <h2 className="text-2xl font-black text-black mb-4">📦 FĂRĂ PRODUSE</h2>
+          <p className="text-sm font-bold text-black mb-6">
+            Nu ai produse în baza de date. Adaugă produse din panoul de administrare.
+          </p>
+          <a
+            href="/dashboard/products"
+            className="inline-block px-6 py-3 bg-black text-white rounded-xl font-bold hover:bg-gray-800"
+          >
+            ➕ ADAUGĂ PRODUSE
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen p-4 md:p-8 bg-gradient-to-br from-purple-100 via-white to-pink-100">
@@ -49,7 +81,7 @@ const MenuOfflineCalculator = () => {
                 MENIU RESTAURANT
               </h1>
               <p className="text-gray-700 font-semibold">
-                Pricing pentru meniu in restaurant
+                Pricing pentru meniu în restaurant • {products.length} produse
               </p>
             </div>
             <div className="px-6 py-3 bg-black rounded-2xl text-white border-4 border-black">
@@ -97,18 +129,18 @@ const MenuOfflineCalculator = () => {
           </div>
         </div>
 
-        {/* Content Area */}
+        {/* Content Area - Pass database products */}
         <div>
           {activeView === 'dashboard' && (
-            <DashboardProduse products={allProducts} calculatorType="offline" />
+            <DashboardProduse products={products} calculatorType="offline" />
           )}
           
           {activeView === 'fix' && (
-            <MeniuFixBuilder products={allProducts} calculatorType="offline" />
+            <MeniuFixBuilder products={products} calculatorType="offline" />
           )}
           
           {activeView === 'variatii' && (
-            <MeniuVariatiiBuilder products={allProducts} calculatorType="offline" />
+            <MeniuVariatiiBuilder products={products} calculatorType="offline" />
           )}
         </div>
 
@@ -119,7 +151,7 @@ const MenuOfflineCalculator = () => {
               <p className="font-bold text-white mb-2">
                 Calculator dezvoltat pentru <strong className="text-purple-400">OFFLINE RESTAURANT</strong>
               </p>
-              <p className="text-sm text-gray-400">© 2025 | Date actualizate: Octombrie 2025</p>
+              <p className="text-sm text-gray-400">© 2025 | Date live din Supabase</p>
             </div>
             <div className="flex flex-col items-center gap-2">
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Powered by</p>

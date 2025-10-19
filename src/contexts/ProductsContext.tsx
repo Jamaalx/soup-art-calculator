@@ -1,18 +1,10 @@
 'use client';
 
 import React, { createContext, useContext } from 'react';
-import { useProducts } from '@/hooks/useUserProducts';
+import { useProducts } from '@/hooks/useProducts';
 import type { Product } from '@/types';
 
-interface ProductsContextType {
-  products: Product[];
-  loading: boolean;
-  error: string | null;
-  addProduct: (product: Omit<Product, 'id'>) => Promise<Product | undefined>;
-  updateProduct: (id: string, updates: Partial<Product>) => Promise<void>;
-  deleteProduct: (id: string) => Promise<void>;
-  refresh: () => Promise<void>;
-}
+type ProductsContextType = ReturnType<typeof useProducts>;
 
 const ProductsContext = createContext<ProductsContextType | undefined>(undefined);
 
