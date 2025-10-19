@@ -14,7 +14,7 @@ export interface Product {
   pret_cost: number;
   pret_offline?: number | null;  // FIXED: Made optional and nullable
   pret_online?: number | null;   // FIXED: Made optional and nullable
-  is_active: boolean;
+  is_active: boolean;  // Always present from database
   pretCost: number;
   pretOffline?: number;  // FIXED: Made optional
   pretOnline?: number;   // FIXED: Made optional

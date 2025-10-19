@@ -14,7 +14,7 @@ interface DBProduct {
   pret_offline: number | null;
   pret_online: number | null;
   is_active: boolean;
-  user_id: string | null;
+  user_id: string | null;  // FIXED: Changed from 'string' to 'string | null'
   created_at: string;
   updated_at: string;
 }
@@ -29,7 +29,7 @@ export interface Product {
   pret_cost: number;
   pret_offline?: number | null;
   pret_online?: number | null;
-  is_active: boolean;
+  is_active: boolean;  // Always present, never undefined
   pretCost: number;
   pretOffline?: number;
   pretOnline?: number;
@@ -97,7 +97,7 @@ class ProductService {
         .from('products')
         .insert([
           {
-            user_id: user.id || null,
+            user_id: user.id,
             company_id: companyId,
             product_id: input.product_id,
             nume: input.nume,
@@ -296,7 +296,7 @@ class ProductService {
       const companyId = await this.getUserCompanyId();
 
       const productsToInsert = csvData.map(product => ({
-        user_id: user.id ?? null,
+        user_id: user.id,
         company_id: companyId,
         product_id: product.product_id,
         nume: product.nume,
