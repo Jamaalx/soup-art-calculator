@@ -1,5 +1,6 @@
 // services/productService.ts
 import { createClient } from '@/lib/supabase/client';
+import type { Product } from '@/types';  // IMPORT from types instead of duplicating
 
 const supabase = createClient();
 
@@ -14,26 +15,9 @@ interface DBProduct {
   pret_offline: number | null;
   pret_online: number | null;
   is_active: boolean;
-  user_id: string | null;  // FIXED: Changed from 'string' to 'string | null'
+  user_id: string | null;
   created_at: string;
   updated_at: string;
-}
-
-export interface Product {
-  id: string;
-  product_id: string;
-  nume: string;
-  category_id: string;
-  company_id?: string | null;
-  cantitate?: string | null;
-  pret_cost: number;
-  pret_offline?: number | null;
-  pret_online?: number | null;
-  is_active: boolean;  // Always present, never undefined
-  pretCost: number;
-  pretOffline?: number;
-  pretOnline?: number;
-  category: string;
 }
 
 export interface CreateProductInput {
