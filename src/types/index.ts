@@ -10,14 +10,14 @@ export interface Product {
   nume: string;
   category_id: string;
   company_id?: string | null;
-  cantitate?: string | null;  // FIXED: Made optional and nullable
+  cantitate?: string | null;
   pret_cost: number;
-  pret_offline?: number | null;  // FIXED: Made optional and nullable
-  pret_online?: number | null;   // FIXED: Made optional and nullable
-  is_active: boolean;  // Always present from database
+  pret_offline?: number | null;
+  pret_online?: number | null;
+  is_active: boolean;
   pretCost: number;
-  pretOffline?: number;  // FIXED: Made optional
-  pretOnline?: number;   // FIXED: Made optional
+  pretOffline?: number;
+  pretOnline?: number;
   category: string;
 }
 
@@ -30,7 +30,7 @@ export interface CategoryMetadata {
   description: string;
 }
 
-// Fixed Menu Combo
+// Fixed Menu Combo - UPDATED WITH NEW FIELDS
 export interface FixedMenuCombo {
   id: string;
   name: string;
@@ -39,13 +39,17 @@ export interface FixedMenuCombo {
     productId: string;
     productName: string;
   }>;
+  foodCost: number;                    // NEW: Separate food cost
   totalCost: number;
   individualPrice: number;
   comboPrice: number;
+  priceAfterDiscount: number;          // NEW: Price customer actually pays
+  discountAmount: number;              // NEW: Discount amount in LEI
+  commissionAmount: number;            // NEW: App commission amount
   profit: number;
   marjaProfit: number;
-  discount: number;
-  discountPercent: number;
+  customerDiscount: number;            // Renamed from 'discount'
+  customerDiscountPercent: number;     // Renamed from 'discountPercent'
 }
 
 // Variable Menu Configuration
@@ -58,16 +62,19 @@ export interface VariableMenuConfig {
   };
 }
 
-// Menu Combination (for variations calculator)
+// Menu Combination (for variations calculator) - UPDATED WITH NEW FIELDS
 export interface MenuCombination {
   products: Product[];
   costTotal: number;
   pretIndividual: number;
   pretMeniu: number;
+  priceAfterDiscount: number;          // NEW: Price customer actually pays
+  discountAmount: number;              // NEW: Discount amount in LEI
+  commissionAmount: number;            // NEW: App commission amount
   profit: number;
   marjaProfit: number;
-  discount: number;
-  discountPercent: number;
+  discount: number;                    // Customer savings vs individual prices
+  discountPercent: number;             // Customer savings percentage
 }
 
 // Simulation (legacy - keep for compatibility)

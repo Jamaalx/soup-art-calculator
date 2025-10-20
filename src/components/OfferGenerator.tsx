@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import type { Product } from '@/types';
+import type { Product, FixedMenuCombo, MenuCombination } from '@/types';
 import MeniuFixBuilder from './MenuFixBuilder';
 import MeniuVariatiiBuilder from './MeniuVariatiiBuilder';
 import jsPDF from 'jspdf';
@@ -13,9 +13,18 @@ interface OfferGeneratorProps {
 
 type MenuType = 'fix' | 'variatii';
 
+interface MenuData {
+  type: MenuType;
+  combos?: FixedMenuCombo[];
+  selectedCombo?: FixedMenuCombo;
+  combinations?: MenuCombination[];
+  selectedCombinations?: MenuCombination[];
+}
+
 const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products }) => {
   const [activeMenu, setActiveMenu] = useState<MenuType>('fix');
   const [showPdfModal, setShowPdfModal] = useState(false);
+  const [menuData, setMenuData] = useState<MenuData | null>(null);
   
   // Client form data
   const [clientName, setClientName] = useState('');
@@ -24,7 +33,6 @@ const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products }) => {
   const [offerName, setOfferName] = useState('');
   const [portions, setPortions] = useState(10);
   const [offerType, setOfferType] = useState<'daily' | 'weekly' | 'monthly'>('daily');
-  const [menuPrice, setMenuPrice] = useState(35);
 
   // Helper to remove diacritics
   const removeDiacritics = (str: string): string => {
@@ -34,6 +42,12 @@ const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products }) => {
   const handleGeneratePDF = () => {
     if (!clientName.trim() || !offerName.trim()) {
       alert('Te rog completeaza numele clientului si numele ofertei!');
+      return;
+    }
+
+    if (!menuData || (activeMenu === 'fix' && !menuData.selectedCombo) || 
+        (activeMenu === 'variatii' && (!menuData.selectedCombinations || menuData.selectedCombinations.length === 0))) {
+      alert('Te rog selecteaza cel putin un meniu inainte de a genera PDF-ul!');
       return;
     }
 
@@ -76,7 +90,7 @@ const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products }) => {
     doc.text(`Data: ${today.toLocaleDateString('ro-RO')}`, 50, 40);
     doc.text(removeDiacritics(`Valabila pana la: ${validUntil.toLocaleDateString('ro-RO')}`), 50, 45);
     
-    // From (User company info - you'll fetch from database)
+    // From (User company info)
     doc.setFontSize(8);
     doc.setTextColor(...darkGray);
     doc.text(removeDiacritics('Oferta de la: [NUME COMPANIE USER]'), 50, 52);
@@ -132,24 +146,75 @@ const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products }) => {
     doc.text(removeDiacritics(offerTypeLabels[offerType]), 15, yPos);
     yPos += 15;
     
-    // Menu Details
+    // Menu Details Section
     doc.setFillColor(249, 250, 251);
-    doc.rect(15, yPos - 5, 180, 30, 'F');
+    doc.rect(15, yPos - 5, 180, 40, 'F');
     
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...darkGray);
-    doc.text('MENIU:', 20, yPos);
+    doc.text('DETALII MENIU:', 20, yPos);
+    yPos += 7;
     
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    doc.text(removeDiacritics(`Tip: ${activeMenu === 'fix' ? 'Meniu Fix' : 'Meniu cu Variatii'}`), 20, yPos + 7);
-    doc.text(`Pret per meniu: ${menuPrice.toFixed(2)} lei`, 20, yPos + 14);
-    doc.text(`Numar de portii: ${portions}`, 20, yPos + 21);
+    doc.text(removeDiacritics(`Tip: ${activeMenu === 'fix' ? 'Meniu Fix' : 'Meniu cu Variatii'}`), 20, yPos);
+    yPos += 7;
+
+    // Add menu composition details
+    if (activeMenu === 'fix' && menuData.selectedCombo) {
+      const combo = menuData.selectedCombo;
+      doc.setFont('helvetica', 'bold');
+      doc.text(removeDiacritics(`Combo: ${combo.name}`), 20, yPos);
+      yPos += 5;
+      
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      combo.products.forEach((item) => {
+        doc.text(removeDiacritics(`  - ${getCategoryLabel(item.category)}: ${item.productName}`), 20, yPos);
+        yPos += 4;
+      });
+      yPos += 3;
+      
+      doc.setFontSize(10);
+      doc.text(`Pret per meniu: ${combo.comboPrice.toFixed(2)} lei`, 20, yPos);
+      yPos += 5;
+      doc.text(`Cost per meniu: ${combo.totalCost.toFixed(2)} lei`, 20, yPos);
+      yPos += 5;
+      doc.text(`Marja profit: ${combo.marjaProfit.toFixed(1)}%`, 20, yPos);
+      
+    } else if (activeMenu === 'variatii' && menuData.selectedCombinations) {
+      doc.setFont('helvetica', 'bold');
+      doc.text(removeDiacritics(`Variatii selectate: ${menuData.selectedCombinations.length}`), 20, yPos);
+      yPos += 5;
+      
+      // Show average menu price
+      const avgPrice = menuData.selectedCombinations.reduce((sum, c) => sum + c.pretMeniu, 0) / menuData.selectedCombinations.length;
+      const avgCost = menuData.selectedCombinations.reduce((sum, c) => sum + c.costTotal, 0) / menuData.selectedCombinations.length;
+      const avgMargin = menuData.selectedCombinations.reduce((sum, c) => sum + c.marjaProfit, 0) / menuData.selectedCombinations.length;
+      
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text(`Pret mediu per meniu: ${avgPrice.toFixed(2)} lei`, 20, yPos);
+      yPos += 5;
+      doc.text(`Cost mediu per meniu: ${avgCost.toFixed(2)} lei`, 20, yPos);
+      yPos += 5;
+      doc.text(`Marja medie: ${avgMargin.toFixed(1)}%`, 20, yPos);
+    }
     
-    yPos += 40;
+    yPos += 15;
+    doc.text(`Numar de portii: ${portions}`, 20, yPos);
+    
+    yPos += 20;
     
     // Total Calculation
+    let menuPrice = 0;
+    if (activeMenu === 'fix' && menuData.selectedCombo) {
+      menuPrice = menuData.selectedCombo.comboPrice;
+    } else if (activeMenu === 'variatii' && menuData.selectedCombinations) {
+      menuPrice = menuData.selectedCombinations.reduce((sum, c) => sum + c.pretMeniu, 0) / menuData.selectedCombinations.length;
+    }
+    
     const totalPerDay = menuPrice * portions;
     let totalAmount = totalPerDay;
     let daysLabel = '';
@@ -241,6 +306,11 @@ const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products }) => {
     setPortions(10);
   };
 
+  // Callback to receive menu data from builders
+  const handleMenuDataUpdate = (data: MenuData) => {
+    setMenuData(data);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -259,7 +329,12 @@ const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products }) => {
           </div>
           <button
             onClick={() => setShowPdfModal(true)}
-            className="px-8 py-4 bg-blue-500 text-white rounded-2xl border-4 border-black font-black text-xl hover:bg-blue-600 hover:scale-105 transition-all shadow-xl"
+            disabled={!menuData}
+            className={`px-8 py-4 rounded-2xl border-4 border-black font-black text-xl transition-all shadow-xl ${
+              menuData
+                ? 'bg-blue-500 text-white hover:bg-blue-600 hover:scale-105'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-50'
+            }`}
           >
             📄 GENEREAZA PDF
           </button>
@@ -270,7 +345,10 @@ const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products }) => {
       <div className="bg-white rounded-3xl shadow-2xl p-6 border-4 border-black">
         <div className="grid grid-cols-2 gap-4">
           <button
-            onClick={() => setActiveMenu('fix')}
+            onClick={() => {
+              setActiveMenu('fix');
+              setMenuData(null);
+            }}
             className={`py-4 px-6 rounded-2xl border-4 border-black font-black text-lg transition-all ${
               activeMenu === 'fix'
                 ? 'bg-[#9eff55] text-black scale-105'
@@ -281,7 +359,10 @@ const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products }) => {
           </button>
           
           <button
-            onClick={() => setActiveMenu('variatii')}
+            onClick={() => {
+              setActiveMenu('variatii');
+              setMenuData(null);
+            }}
             className={`py-4 px-6 rounded-2xl border-4 border-black font-black text-lg transition-all ${
               activeMenu === 'variatii'
                 ? 'bg-[#9eff55] text-black scale-105'
@@ -296,11 +377,19 @@ const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products }) => {
       {/* Calculator Content */}
       <div>
         {activeMenu === 'fix' && (
-          <MeniuFixBuilder products={products} calculatorType="online" />
+          <MeniuFixBuilder 
+            products={products} 
+            calculatorType="online"
+            onMenuUpdate={handleMenuDataUpdate}
+          />
         )}
         
         {activeMenu === 'variatii' && (
-          <MeniuVariatiiBuilder products={products} calculatorType="online" />
+          <MeniuVariatiiBuilder 
+            products={products} 
+            calculatorType="online"
+            onMenuUpdate={handleMenuDataUpdate}
+          />
         )}
       </div>
 
@@ -386,7 +475,7 @@ const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products }) => {
             </div>
 
             {/* Portions */}
-            <div className="mb-4">
+            <div className="mb-6">
               <label className="block text-sm font-black text-black mb-2">
                 NUMAR PORTII: {portions}
               </label>
@@ -405,35 +494,54 @@ const OfferGenerator: React.FC<OfferGeneratorProps> = ({ products }) => {
               </div>
             </div>
 
-            {/* Menu Price */}
-            <div className="mb-6">
-              <label className="block text-sm font-black text-black mb-2">
-                PRET PER MENIU: {menuPrice.toFixed(2)} LEI
-              </label>
-              <input
-                type="range"
-                min="20"
-                max="100"
-                step="0.5"
-                value={menuPrice}
-                onChange={(e) => setMenuPrice(parseFloat(e.target.value))}
-                className="w-full h-3 bg-blue-300 rounded-lg cursor-pointer"
-              />
-              <div className="flex justify-between text-xs font-bold text-black mt-1">
-                <span>20 LEI</span>
-                <span>100 LEI</span>
+            {/* Menu Preview */}
+            {menuData && (
+              <div className="mb-6 p-4 bg-yellow-50 rounded-2xl border-2 border-black">
+                <p className="text-sm font-black text-black mb-2">MENIU SELECTAT:</p>
+                {activeMenu === 'fix' && menuData.selectedCombo && (
+                  <div>
+                    <p className="text-xs font-bold text-black mb-1">{menuData.selectedCombo.name}</p>
+                    <p className="text-xs font-bold text-black">Pret: {menuData.selectedCombo.comboPrice.toFixed(2)} LEI</p>
+                    <p className="text-xs font-bold text-gray-700">
+                      {menuData.selectedCombo.products.length} produse
+                    </p>
+                  </div>
+                )}
+                {activeMenu === 'variatii' && menuData.selectedCombinations && (
+                  <div>
+                    <p className="text-xs font-bold text-black mb-1">
+                      {menuData.selectedCombinations.length} variatii selectate
+                    </p>
+                    <p className="text-xs font-bold text-gray-700">
+                      Pret mediu: {(menuData.selectedCombinations.reduce((sum, c) => sum + c.pretMeniu, 0) / menuData.selectedCombinations.length).toFixed(2)} LEI
+                    </p>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
 
             {/* Preview */}
-            <div className="mb-6 p-4 bg-gray-100 rounded-2xl border-2 border-black">
-              <p className="text-xs font-black text-black mb-2">PREVIEW:</p>
-              <p className="text-sm font-bold text-black">
-                {menuPrice.toFixed(2)} lei/meniu x {portions} portii = {(menuPrice * portions).toFixed(2)} lei
-                {offerType === 'weekly' && ` x 7 zile = ${(menuPrice * portions * 7).toFixed(2)} lei`}
-                {offerType === 'monthly' && ` x 30 zile = ${(menuPrice * portions * 30).toFixed(2)} lei`}
-              </p>
-            </div>
+            {menuData && (
+              <div className="mb-6 p-4 bg-gray-100 rounded-2xl border-2 border-black">
+                <p className="text-xs font-black text-black mb-2">PREVIEW:</p>
+                {(() => {
+                  let menuPrice = 0;
+                  if (activeMenu === 'fix' && menuData.selectedCombo) {
+                    menuPrice = menuData.selectedCombo.comboPrice;
+                  } else if (activeMenu === 'variatii' && menuData.selectedCombinations) {
+                    menuPrice = menuData.selectedCombinations.reduce((sum, c) => sum + c.pretMeniu, 0) / menuData.selectedCombinations.length;
+                  }
+                  const dailyTotal = menuPrice * portions;
+                  return (
+                    <p className="text-sm font-bold text-black">
+                      {menuPrice.toFixed(2)} lei/meniu x {portions} portii = {dailyTotal.toFixed(2)} lei
+                      {offerType === 'weekly' && ` x 7 zile = ${(dailyTotal * 7).toFixed(2)} lei`}
+                      {offerType === 'monthly' && ` x 30 zile = ${(dailyTotal * 30).toFixed(2)} lei`}
+                    </p>
+                  );
+                })()}
+              </div>
+            )}
 
             {/* Buttons */}
             <div className="flex gap-4">

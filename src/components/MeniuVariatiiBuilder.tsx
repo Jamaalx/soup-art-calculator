@@ -13,12 +13,22 @@ interface CategorySlot {
 interface MeniuVariatiiBuilderProps {
   products: Product[];
   calculatorType: 'online' | 'offline' | 'catering';
+  onMenuUpdate?: (data: { 
+    type: 'variatii'; 
+    combinations: MenuCombination[]; 
+    selectedCombinations: MenuCombination[] 
+  }) => void;
 }
 
-const MeniuVariatiiBuilder: React.FC<MeniuVariatiiBuilderProps> = ({ products, calculatorType }) => {
+const MeniuVariatiiBuilder: React.FC<MeniuVariatiiBuilderProps> = ({ 
+  products, 
+  calculatorType,
+  onMenuUpdate
+}) => {
   
   const [categorySlots, setCategorySlots] = useState<CategorySlot[]>([]);
   const [menuPrice, setMenuPrice] = useState<number>(35);
+  const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [generatedCombinations, setGeneratedCombinations] = useState<MenuCombination[]>([]);
   const [sortBy, setSortBy] = useState<'marjaProfit' | 'profit' | 'costTotal'>('marjaProfit');
 
@@ -107,11 +117,18 @@ const MeniuVariatiiBuilder: React.FC<MeniuVariatiiBuilderProps> = ({ products, c
         // Calculate food cost
         const foodCost = current.reduce((sum, p) => sum + p.pret_cost, 0);
         
+        // Price after discount (what customer actually pays)
+        const discountAmount = (menuPrice * discountPercent) / 100;
+        const priceAfterDiscount = menuPrice - discountAmount;
+        
         // Calculate total cost based on calculator type
+        let commissionAmount = 0;
         let costTotal = foodCost;
+        
         if (calculatorType === 'online') {
-          const appCommissionAmount = menuPrice * APP_COMMISSION;
-          costTotal = foodCost + AMBALAJ_COST + appCommissionAmount;
+          // Commission on price after discount
+          commissionAmount = priceAfterDiscount * APP_COMMISSION;
+          costTotal = foodCost + AMBALAJ_COST + commissionAmount;
         }
         
         // Calculate individual price (handle null values)
@@ -122,23 +139,26 @@ const MeniuVariatiiBuilder: React.FC<MeniuVariatiiBuilderProps> = ({ products, c
           return sum + price;
         }, 0);
         
-        // Profit and margin
-        const profit = menuPrice - costTotal;
+        // Profit = what customer pays - total costs
+        const profit = priceAfterDiscount - costTotal;
         const marjaProfit = (profit / costTotal) * 100;
         
-        // Discount for customer
-        const discount = pretIndividual - menuPrice;
-        const discountPercent = (discount / pretIndividual) * 100;
+        // Customer discount (vs buying separately)
+        const discount = pretIndividual - priceAfterDiscount;
+        const discountPercentCalc = (discount / pretIndividual) * 100;
 
         return [{
           products: [...current],
           costTotal,
           pretIndividual,
           pretMeniu: menuPrice,
+          priceAfterDiscount,
+          discountAmount,
+          commissionAmount,
           profit,
           marjaProfit,
           discount,
-          discountPercent
+          discountPercent: discountPercentCalc
         }];
       }
 
@@ -166,12 +186,31 @@ const MeniuVariatiiBuilder: React.FC<MeniuVariatiiBuilderProps> = ({ products, c
     }).slice(0, 100);
 
     setGeneratedCombinations(sorted);
+    
+    // Notify parent component with top 5 combinations
+    if (onMenuUpdate) {
+      onMenuUpdate({
+        type: 'variatii',
+        combinations: sorted,
+        selectedCombinations: sorted.slice(0, 5)
+      });
+    }
   };
 
   const handleReset = () => {
     setCategorySlots([]);
     setGeneratedCombinations([]);
     setMenuPrice(35);
+    setDiscountPercent(0);
+    
+    // Notify parent that menu was cleared
+    if (onMenuUpdate) {
+      onMenuUpdate({
+        type: 'variatii',
+        combinations: [],
+        selectedCombinations: []
+      });
+    }
   };
 
   const stats = useMemo(() => {
@@ -191,6 +230,10 @@ const MeniuVariatiiBuilder: React.FC<MeniuVariatiiBuilderProps> = ({ products, c
       profitabile: generatedCombinations.filter(c => c.marjaProfit >= 100).length
     };
   }, [generatedCombinations]);
+
+  // Calculate price after discount for display
+  const priceAfterDiscount = menuPrice - (menuPrice * discountPercent / 100);
+  const discountAmount = menuPrice * discountPercent / 100;
 
   return (
     <div className="space-y-6">
@@ -355,7 +398,7 @@ const MeniuVariatiiBuilder: React.FC<MeniuVariatiiBuilderProps> = ({ products, c
           {/* Price Slider */}
           <div className="mb-6">
             <label className="block text-sm font-black text-black mb-2">
-              PREȚ MENIU: {menuPrice.toFixed(2)} LEI
+              PREȚ BAZĂ MENIU: {menuPrice.toFixed(2)} LEI
             </label>
             <input
               type="range"
@@ -372,14 +415,44 @@ const MeniuVariatiiBuilder: React.FC<MeniuVariatiiBuilderProps> = ({ products, c
             </div>
           </div>
 
+          {/* Discount Slider (Online only) */}
+          {calculatorType === 'online' && (
+            <div className="mb-6">
+              <label className="block text-sm font-black text-black mb-2">
+                🎁 DISCOUNT PROMOȚIONAL: {discountPercent.toFixed(0)}%
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="50"
+                step="5"
+                value={discountPercent}
+                onChange={(e) => setDiscountPercent(parseFloat(e.target.value))}
+                className="w-full h-4 bg-red-300 rounded-lg cursor-pointer border-2 border-black"
+              />
+              <div className="flex justify-between text-xs font-bold text-black mt-1">
+                <span>0%</span>
+                <span>50%</span>
+              </div>
+              {discountPercent > 0 && (
+                <p className="text-xs font-bold text-red-600 mt-2">
+                  Client plătește: {priceAfterDiscount.toFixed(2)} LEI 
+                  (economie: {discountAmount.toFixed(2)} LEI)
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Online Cost Info */}
           {calculatorType === 'online' && (
             <div className="mb-6 p-4 bg-blue-100 rounded-2xl border-2 border-black">
               <p className="text-sm font-black text-black mb-2">📦 COSTURI ONLINE INCLUSE:</p>
               <p className="text-xs font-bold text-black">• Ambalaj: {AMBALAJ_COST.toFixed(2)} LEI / meniu</p>
-              <p className="text-xs font-bold text-black">• Comision aplicație: {(APP_COMMISSION * 100).toFixed(1)}% din preț</p>
+              <p className="text-xs font-bold text-black">
+                • Comision aplicație: {(APP_COMMISSION * 100).toFixed(1)}% din preț după discount
+              </p>
               <p className="text-xs font-bold text-gray-700 mt-2">
-                Total comision: {(menuPrice * APP_COMMISSION).toFixed(2)} LEI
+                Comision calculat pe: {priceAfterDiscount.toFixed(2)} LEI = {(priceAfterDiscount * APP_COMMISSION).toFixed(2)} LEI
               </p>
             </div>
           )}
@@ -500,14 +573,18 @@ const MeniuVariatiiBuilder: React.FC<MeniuVariatiiBuilderProps> = ({ products, c
                     ))}
                   </div>
 
-                  <div className="grid grid-cols-4 gap-2 pt-2 border-t-2 border-black">
+                  <div className="grid grid-cols-6 gap-2 pt-2 border-t-2 border-black">
                     <div className="text-center">
                       <p className="text-xs font-bold text-gray-800">COST</p>
                       <p className="text-sm font-black text-black">{combo.costTotal.toFixed(2)} LEI</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-xs font-bold text-gray-800">MENIU</p>
-                      <p className="text-sm font-black text-black">{combo.pretMeniu.toFixed(2)} LEI</p>
+                      <p className="text-xs font-bold text-gray-800">INDIVIDUAL</p>
+                      <p className="text-sm font-black text-blue-600">{combo.pretIndividual.toFixed(2)} LEI</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs font-bold text-gray-800">CLIENT</p>
+                      <p className="text-sm font-black text-black">{combo.priceAfterDiscount.toFixed(2)} LEI</p>
                     </div>
                     <div className="text-center">
                       <p className="text-xs font-bold text-gray-800">PROFIT</p>
@@ -516,7 +593,11 @@ const MeniuVariatiiBuilder: React.FC<MeniuVariatiiBuilderProps> = ({ products, c
                       </p>
                     </div>
                     <div className="text-center">
-                      <p className="text-xs font-bold text-gray-800">DISCOUNT</p>
+                      <p className="text-xs font-bold text-gray-800">COMISION</p>
+                      <p className="text-sm font-black text-red-600">{combo.commissionAmount.toFixed(2)} LEI</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs font-bold text-gray-800">ECONOMIE</p>
                       <p className="text-sm font-black text-green-600">{combo.discountPercent.toFixed(1)}%</p>
                     </div>
                   </div>

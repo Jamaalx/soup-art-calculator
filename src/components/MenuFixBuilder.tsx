@@ -12,17 +12,29 @@ interface CategorySlot {
 interface MeniuFixBuilderProps {
   products: Product[];
   calculatorType: 'online' | 'offline' | 'catering';
+  onMenuUpdate?: (data: { 
+    type: 'fix'; 
+    combos: FixedMenuCombo[]; 
+    selectedCombo?: FixedMenuCombo 
+  }) => void;
 }
 
-const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({ products, calculatorType }) => {
+const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({ 
+  products, 
+  calculatorType,
+  onMenuUpdate
+}) => {
   
   const [combos, setCombos] = useState<FixedMenuCombo[]>([]);
   const [categorySlots, setCategorySlots] = useState<CategorySlot[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<Record<string, string>>({});
   const [comboName, setComboName] = useState<string>('');
   const [comboPrice, setComboPrice] = useState<number>(35);
+  const [discountPercent, setDiscountPercent] = useState<number>(0);
 
-  const COSTURI_FIXE = calculatorType === 'online' ? 0 : 0;
+  // Online costs
+  const AMBALAJ_COST = 3.0;
+  const APP_COMMISSION = 0.363;
 
   // Get unique categories dynamically from products
   const availableCategories = useMemo(() => {
@@ -79,19 +91,38 @@ const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({ products, calculatorT
   const comboCalculations = useMemo(() => {
     if (selectedProductsArray.length < 2) {
       return {
+        foodCost: 0,
         totalCost: 0,
         individualPrice: 0,
         comboPrice: comboPrice,
+        priceAfterDiscount: comboPrice,
+        discountAmount: 0,
+        commissionAmount: 0,
         profit: 0,
         marjaProfit: 0,
-        discount: 0,
-        discountPercent: 0
+        customerDiscount: 0,
+        customerDiscountPercent: 0
       };
     }
 
-    const totalCost = selectedProductsArray.reduce((sum, { product }) => 
-      sum + product.pret_cost, 0) + COSTURI_FIXE;
+    // Food cost
+    const foodCost = selectedProductsArray.reduce((sum, { product }) => 
+      sum + product.pret_cost, 0);
     
+    // Price after discount (what customer actually pays)
+    const discountAmount = (comboPrice * discountPercent) / 100;
+    const priceAfterDiscount = comboPrice - discountAmount;
+    
+    // Commission is calculated on price after discount
+    let commissionAmount = 0;
+    let totalCost = foodCost;
+    
+    if (calculatorType === 'online') {
+      commissionAmount = priceAfterDiscount * APP_COMMISSION;
+      totalCost = foodCost + AMBALAJ_COST + commissionAmount;
+    }
+    
+    // Individual price (sum of products sold separately)
     const individualPrice = selectedProductsArray.reduce((sum, { product }) => {
       const price = calculatorType === 'online' 
         ? (product.pret_online || 0) 
@@ -99,21 +130,28 @@ const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({ products, calculatorT
       return sum + price;
     }, 0);
     
-    const profit = comboPrice - totalCost;
+    // Profit = what customer pays - total costs
+    const profit = priceAfterDiscount - totalCost;
     const marjaProfit = (profit / totalCost) * 100;
-    const discount = individualPrice - comboPrice;
-    const discountPercent = (discount / individualPrice) * 100;
+    
+    // Customer discount (how much they save vs buying separately)
+    const customerDiscount = individualPrice - priceAfterDiscount;
+    const customerDiscountPercent = (customerDiscount / individualPrice) * 100;
 
     return {
+      foodCost,
       totalCost,
       individualPrice,
       comboPrice,
+      priceAfterDiscount,
+      discountAmount,
+      commissionAmount,
       profit,
       marjaProfit,
-      discount,
-      discountPercent
+      customerDiscount,
+      customerDiscountPercent
     };
-  }, [selectedProductsArray, comboPrice, calculatorType, COSTURI_FIXE]);
+  }, [selectedProductsArray, comboPrice, discountPercent, calculatorType]);
 
   const handleSaveCombo = () => {
     if (selectedProductsArray.length < 2 || !comboName.trim()) {
@@ -132,17 +170,38 @@ const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({ products, calculatorT
       ...comboCalculations
     };
 
-    setCombos(prev => [...prev, newCombo]);
+    const updatedCombos = [...combos, newCombo];
+    setCombos(updatedCombos);
+    
+    // Notify parent component
+    if (onMenuUpdate) {
+      onMenuUpdate({
+        type: 'fix',
+        combos: updatedCombos,
+        selectedCombo: newCombo
+      });
+    }
     
     // Reset form
     setCategorySlots([]);
     setSelectedProducts({});
     setComboName('');
     setComboPrice(35);
+    setDiscountPercent(0);
   };
 
   const handleDeleteCombo = (comboId: string) => {
-    setCombos(prev => prev.filter(c => c.id !== comboId));
+    const updatedCombos = combos.filter(c => c.id !== comboId);
+    setCombos(updatedCombos);
+    
+    // Notify parent component
+    if (onMenuUpdate) {
+      onMenuUpdate({
+        type: 'fix',
+        combos: updatedCombos,
+        selectedCombo: updatedCombos.length > 0 ? updatedCombos[updatedCombos.length - 1] : undefined
+      });
+    }
   };
 
   return (
@@ -269,13 +328,13 @@ const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({ products, calculatorT
       {selectedProductsArray.length >= 2 && (
         <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-black">
           <h3 className="text-2xl font-black mb-4 text-black">
-            💰 PASUL 3: CONFIGUREAZĂ COMBOBOX-UL
+            💰 PASUL 3: CONFIGUREAZĂ COMBO-UL
           </h3>
 
           {/* Combo Name */}
           <div className="mb-6">
             <label className="block text-sm font-black text-black mb-2">
-              NUMELE COMBOULUI
+              NUMELE COMBO-ULUI
             </label>
             <input
               type="text"
@@ -289,7 +348,7 @@ const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({ products, calculatorT
           {/* Price Slider */}
           <div className="mb-6">
             <label className="block text-sm font-black text-black mb-2">
-              PREȚ COMBO: {comboPrice.toFixed(2)} LEI
+              PREȚ BAZĂ COMBO: {comboPrice.toFixed(2)} LEI
             </label>
             <input
               type="range"
@@ -306,6 +365,34 @@ const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({ products, calculatorT
             </div>
           </div>
 
+          {/* Discount Slider (Online only) */}
+          {calculatorType === 'online' && (
+            <div className="mb-6">
+              <label className="block text-sm font-black text-black mb-2">
+                🎁 DISCOUNT PROMOȚIONAL: {discountPercent.toFixed(0)}%
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="50"
+                step="5"
+                value={discountPercent}
+                onChange={(e) => setDiscountPercent(parseFloat(e.target.value))}
+                className="w-full h-4 bg-red-300 rounded-lg cursor-pointer border-2 border-black"
+              />
+              <div className="flex justify-between text-xs font-bold text-black mt-1">
+                <span>0%</span>
+                <span>50%</span>
+              </div>
+              {discountPercent > 0 && (
+                <p className="text-xs font-bold text-red-600 mt-2">
+                  Client plătește: {comboCalculations.priceAfterDiscount.toFixed(2)} LEI 
+                  (economie: {comboCalculations.discountAmount.toFixed(2)} LEI)
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Selected Products Preview */}
           <div className="mb-6 p-4 bg-blue-100 rounded-2xl border-2 border-black">
             <p className="text-sm font-black text-black mb-2">PRODUSE SELECTATE:</p>
@@ -316,18 +403,37 @@ const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({ products, calculatorT
             ))}
           </div>
 
+          {/* Cost Breakdown (Online) */}
+          {calculatorType === 'online' && (
+            <div className="mb-6 p-4 bg-purple-100 rounded-2xl border-2 border-black">
+              <p className="text-sm font-black text-black mb-2">💸 DETALII COSTURI:</p>
+              <p className="text-xs font-bold text-black">• Cost mâncare: {comboCalculations.foodCost.toFixed(2)} LEI</p>
+              <p className="text-xs font-bold text-black">• Ambalaj: {AMBALAJ_COST.toFixed(2)} LEI</p>
+              <p className="text-xs font-bold text-black">
+                • Comision app ({(APP_COMMISSION * 100).toFixed(1)}% din {comboCalculations.priceAfterDiscount.toFixed(2)} LEI): {comboCalculations.commissionAmount.toFixed(2)} LEI
+              </p>
+              <p className="text-xs font-black text-black mt-2 pt-2 border-t-2 border-black">
+                TOTAL COSTURI: {comboCalculations.totalCost.toFixed(2)} LEI
+              </p>
+            </div>
+          )}
+
           {/* Calculations */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
             <div className="p-4 rounded-2xl border-2 border-black bg-yellow-200">
               <p className="text-xs font-black text-black">COST TOTAL</p>
               <p className="text-2xl font-black text-black">{comboCalculations.totalCost.toFixed(2)} LEI</p>
             </div>
             <div className="p-4 rounded-2xl border-2 border-black bg-blue-200">
               <p className="text-xs font-black text-black">PREȚ INDIVIDUAL</p>
-              <p className="text-2xl font-black text-black">{comboCalculations.individualPrice.toFixed(2)} LEI</p>
+              <p className="text-2xl font-black text-blue-600">{comboCalculations.individualPrice.toFixed(2)} LEI</p>
+            </div>
+            <div className="p-4 rounded-2xl border-2 border-black bg-orange-200">
+              <p className="text-xs font-black text-black">CLIENT PLĂTEȘTE</p>
+              <p className="text-2xl font-black text-black">{comboCalculations.priceAfterDiscount.toFixed(2)} LEI</p>
             </div>
             <div className="p-4 rounded-2xl border-2 border-black bg-green-200">
-              <p className="text-xs font-black text-black">PROFIT</p>
+              <p className="text-xs font-black text-black">PROFIT NET</p>
               <p className={`text-2xl font-black ${comboCalculations.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {comboCalculations.profit >= 0 ? '+' : ''}{comboCalculations.profit.toFixed(2)} LEI
               </p>
@@ -340,11 +446,11 @@ const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({ products, calculatorT
             </div>
           </div>
 
-          {/* Discount Info */}
+          {/* Customer Discount Info */}
           <div className="p-4 bg-green-100 rounded-2xl border-2 border-black mb-6">
             <p className="text-sm font-black text-black">
-              🎉 DISCOUNT PENTRU CLIENT: {comboCalculations.discount.toFixed(2)} LEI 
-              ({comboCalculations.discountPercent.toFixed(1)}%)
+              🎉 ECONOMIE CLIENT (vs prețuri individuale): {comboCalculations.customerDiscount.toFixed(2)} LEI 
+              ({comboCalculations.customerDiscountPercent.toFixed(1)}%)
             </p>
           </div>
 
@@ -390,17 +496,21 @@ const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({ products, calculatorT
                   </button>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
-                  <div className="text-center">
-                    <p className="text-xs font-bold text-gray-800">PREȚ COMBO</p>
-                    <p className="text-lg font-black text-black">{combo.comboPrice.toFixed(2)} LEI</p>
-                  </div>
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-2 mb-4">
                   <div className="text-center">
                     <p className="text-xs font-bold text-gray-800">COST</p>
                     <p className="text-lg font-black text-black">{combo.totalCost.toFixed(2)} LEI</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-xs font-bold text-gray-800">PROFIT</p>
+                    <p className="text-xs font-bold text-gray-800">INDIVIDUAL</p>
+                    <p className="text-lg font-black text-blue-600">{combo.individualPrice.toFixed(2)} LEI</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs font-bold text-gray-800">PREȚ CLIENT</p>
+                    <p className="text-lg font-black text-black">{combo.priceAfterDiscount.toFixed(2)} LEI</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs font-bold text-gray-800">PROFIT NET</p>
                     <p className={`text-lg font-black ${combo.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {combo.profit >= 0 ? '+' : ''}{combo.profit.toFixed(2)} LEI
                     </p>
@@ -412,8 +522,8 @@ const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({ products, calculatorT
                     </p>
                   </div>
                   <div className="text-center">
-                    <p className="text-xs font-bold text-gray-800">DISCOUNT</p>
-                    <p className="text-lg font-black text-green-600">{combo.discountPercent.toFixed(1)}%</p>
+                    <p className="text-xs font-bold text-gray-800">ECONOMIE</p>
+                    <p className="text-lg font-black text-green-600">{combo.customerDiscountPercent.toFixed(1)}%</p>
                   </div>
                 </div>
 
