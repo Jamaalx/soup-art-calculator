@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { Home, Building2, Users, Package, Tag, Settings, Crown, ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
 
 export default function AdminLayout({ 
   children 
@@ -22,7 +23,7 @@ export default function AdminLayout({
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         
         if (userError || !user) {
-          console.log('❌ No user found, redirecting to login');
+          console.log('No user found, redirecting to login');
           router.push('/login');
           return;
         }
@@ -34,21 +35,21 @@ export default function AdminLayout({
           .single();
 
         if (profileError) {
-          console.error('❌ Error fetching profile:', profileError);
+          console.error('Error fetching profile:', profileError);
           router.push('/dashboard');
           return;
         }
 
         if (profile?.role !== 'admin') {
-          console.log('❌ User is not admin, redirecting');
+          console.log('User is not admin, redirecting');
           router.push('/dashboard');
           return;
         }
 
-        console.log('✅ User is admin! Showing admin panel');
+        console.log('User is admin! Showing admin panel');
         setIsAdmin(true);
       } catch (error) {
-        console.error('❌ Error in admin check:', error);
+        console.error('Error in admin check:', error);
         router.push('/dashboard');
       } finally {
         setLoading(false);
@@ -77,38 +78,38 @@ export default function AdminLayout({
   const navItems = [
     {
       href: '/dashboard/admin',
-      label: '🏠 Dashboard',
-      icon: '🏠',
+      label: 'Dashboard',
+      Icon: Home,
       color: 'bg-green-600 hover:bg-green-700'
     },
     {
-    href: '/dashboard/admin/companies',
-    label: '🏢 Companies',
-    icon: '🏢',
-    color: 'bg-indigo-600 hover:bg-indigo-700'
-  },
+      href: '/dashboard/admin/companies',
+      label: 'Companies',
+      Icon: Building2,
+      color: 'bg-indigo-600 hover:bg-indigo-700'
+    },
     {
       href: '/dashboard/admin/users',
-      label: '👥 Users',
-      icon: '👥',
+      label: 'Users',
+      Icon: Users,
       color: 'bg-blue-600 hover:bg-blue-700'
     },
     {
       href: '/dashboard/admin/products',
-      label: '📦 Products',
-      icon: '📦',
+      label: 'Products',
+      Icon: Package,
       color: 'bg-purple-600 hover:bg-purple-700'
     },
     {
       href: '/dashboard/admin/categories',
-      label: '🏷️ Categories',
-      icon: '🏷️',
+      label: 'Categories',
+      Icon: Tag,
       color: 'bg-orange-600 hover:bg-orange-700'
     },
     {
       href: '/dashboard/admin/settings',
-      label: '⚙️ Settings',
-      icon: '⚙️',
+      label: 'Settings',
+      Icon: Settings,
       color: 'bg-gray-600 hover:bg-gray-700'
     }
   ];
@@ -125,10 +126,14 @@ export default function AdminLayout({
                 href="/dashboard" 
                 className="text-gray-600 hover:text-gray-900 font-semibold transition flex items-center gap-2"
               >
-                ← Back to Dashboard
+                <ArrowLeft className="w-4 h-4" />
+                Back to Dashboard
               </Link>
               <div className="h-6 w-px bg-gray-300"></div>
-              <h1 className="text-2xl font-black text-gray-900">👑 Admin Panel</h1>
+              <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
+                <Crown className="w-6 h-6" />
+                Admin Panel
+              </h1>
             </div>
 
             {/* Right side - Navigation links */}
@@ -139,12 +144,13 @@ export default function AdminLayout({
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`px-4 py-2 rounded-lg font-bold transition shadow-md ${
+                    className={`px-4 py-2 rounded-lg font-bold transition shadow-md flex items-center gap-2 ${
                       isActive
                         ? `${item.color} text-white ring-2 ring-offset-2 ring-blue-500`
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                   >
+                    <item.Icon className="w-4 h-4" />
                     {item.label}
                   </Link>
                 );

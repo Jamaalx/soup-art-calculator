@@ -94,10 +94,10 @@ export default function AdminUsersPage() {
       .order('company_name');
     
     if (!error && data) {
-      console.log('✅ Loaded companies:', data.length, data);
+      console.log('Loaded companies:', data.length, data);
       setCompanies(data);
     } else {
-      console.error('❌ Error loading companies:', error);
+      console.error('Error loading companies:', error);
     }
   };
 
@@ -110,10 +110,10 @@ export default function AdminUsersPage() {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('❌ Error fetching users:', error);
+      console.error('Error fetching users:', error);
       alert('Error loading users: ' + error.message);
     } else {
-      console.log('✅ Loaded users:', data?.length, data);
+      console.log('Loaded users:', data?.length, data);
       // Force state update by creating a new array
       setUsers(data ? [...data] : []);
     }
@@ -156,7 +156,7 @@ export default function AdminUsersPage() {
         throw new Error(result.error || 'Failed to create user');
       }
 
-      alert('✅ User created successfully!');
+      alert('User created successfully!');
       setIsModalOpen(false);
       resetForm();
       await fetchUsers();
@@ -168,7 +168,7 @@ export default function AdminUsersPage() {
   };
 
   const handleEditUser = (user: UserProfile) => {
-    console.log('📝 Editing user:', user);
+    console.log('Editing user:', user);
     setEditingUser(user);
     setEditFormData({
       full_name: user.full_name || '',
@@ -190,8 +190,8 @@ export default function AdminUsersPage() {
       return;
     }
 
-    console.log('📤 Updating user ID:', editingUser.id);
-    console.log('📋 New company_id:', editFormData.company_id || 'NULL');
+    console.log('Updating user ID:', editingUser.id);
+    console.log('New company_id:', editFormData.company_id || 'NULL');
 
     // Prepare update data
     // Note: company_name will be auto-set by database trigger
@@ -204,7 +204,7 @@ export default function AdminUsersPage() {
       updated_at: new Date().toISOString()
     };
 
-    console.log('📤 Sending to Supabase:', updateData);
+    console.log('Sending to Supabase:', updateData);
 
     const { data, error } = await supabase
       .from('profiles')
@@ -212,21 +212,21 @@ export default function AdminUsersPage() {
       .eq('id', editingUser.id)
       .select();
 
-    console.log('📥 Supabase response:', { 
+    console.log('Supabase response:', { 
       data, 
       error,
       rowsUpdated: data?.length || 0
     });
 
     if (error) {
-      console.error('❌ Update failed:', error);
+      console.error('Update failed:', error);
       alert('Error updating user: ' + error.message);
     } else if (!data || data.length === 0) {
-      console.warn('⚠️ Update returned 0 rows - RLS might be blocking');
-      alert('⚠️ Update blocked by security policies. Check RLS policies.');
+      console.warn('Update returned 0 rows - RLS might be blocking');
+      alert('Update blocked by security policies. Check RLS policies.');
     } else {
-      console.log('✅ User updated successfully:', data[0]);
-      alert('✅ User updated successfully!\n\nCompany: ' + (data[0].company_name || 'None'));
+      console.log('User updated successfully:', data[0]);
+      alert('User updated successfully!\n\nCompany: ' + (data[0].company_name || 'None'));
       setIsEditModalOpen(false);
       setEditingUser(null);
       await fetchUsers();
@@ -257,7 +257,7 @@ export default function AdminUsersPage() {
     if (error) {
       alert('Error updating role: ' + error.message);
     } else {
-      alert(`✅ User role updated to ${newRole}!`);
+      alert(`User role updated to ${newRole}!`);
       await fetchUsers();
     }
   };
@@ -286,7 +286,7 @@ export default function AdminUsersPage() {
     if (error) {
       alert('Error updating status: ' + error.message);
     } else {
-      alert(`✅ User ${newStatus ? 'activated' : 'deactivated'}!`);
+      alert(`User ${newStatus ? 'activated' : 'deactivated'}!`);
       await fetchUsers();
     }
   };
@@ -297,7 +297,7 @@ export default function AdminUsersPage() {
       return;
     }
 
-    if (!confirm('⚠️ Are you sure you want to delete this user?\n\nThis will:\n• Delete their account\n• Delete all their products\n• Delete all their categories\n• This action CANNOT be undone!')) {
+    if (!confirm('Are you sure you want to delete this user?\n\nThis will:\n• Delete their account\n• Delete all their products\n• Delete all their categories\n• This action CANNOT be undone!')) {
       return;
     }
 
@@ -312,7 +312,7 @@ export default function AdminUsersPage() {
         throw new Error(result.error || 'Failed to delete user');
       }
 
-      alert('✅ User deleted successfully!');
+      alert('User deleted successfully!');
       await fetchUsers();
 
     } catch (error: any) {
@@ -386,13 +386,13 @@ export default function AdminUsersPage() {
             onClick={() => setIsModalOpen(true)}
             className="px-6 py-3 bg-white text-indigo-600 rounded-xl font-bold hover:bg-gray-100 shadow-lg transition transform hover:scale-105"
           >
-            ➕ Create User
+            Create User
           </button>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
         <div className="bg-white rounded-xl p-4 shadow-md border-2 border-gray-200">
           <p className="text-sm text-gray-600 mb-1">Total Users</p>
           <p className="text-3xl font-black text-gray-900">{stats.total}</p>
@@ -421,10 +421,10 @@ export default function AdminUsersPage() {
 
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-md p-4 mb-6 border-2 border-gray-200">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <input
             type="text"
-            placeholder="🔍 Search by name or email..."
+            placeholder="Search by name or email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition"
@@ -434,8 +434,8 @@ export default function AdminUsersPage() {
             onChange={(e) => setSelectedCompanyFilter(e.target.value)}
             className="px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition"
           >
-            <option value="all">🏢 All Companies</option>
-            <option value="none">🚫 No Company</option>
+            <option value="all">All Companies</option>
+            <option value="none">No Company</option>
             {companies.map(company => (
               <option key={company.id} value={company.id}>
                 {company.company_name}
@@ -447,18 +447,18 @@ export default function AdminUsersPage() {
             onChange={(e) => setSelectedRoleFilter(e.target.value)}
             className="px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition"
           >
-            <option value="all">👥 All Roles</option>
-            <option value="admin">👑 Admins Only</option>
-            <option value="user">👤 Users Only</option>
+            <option value="all">All Roles</option>
+            <option value="admin">Admins Only</option>
+            <option value="user">Users Only</option>
           </select>
           <select
             value={selectedStatusFilter}
             onChange={(e) => setSelectedStatusFilter(e.target.value)}
             className="px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition"
           >
-            <option value="all">📊 All Status</option>
-            <option value="active">✅ Active Only</option>
-            <option value="inactive">❌ Inactive Only</option>
+            <option value="all">All Status</option>
+            <option value="active">Active Only</option>
+            <option value="inactive">Inactive Only</option>
           </select>
         </div>
       </div>
@@ -512,7 +512,7 @@ export default function AdminUsersPage() {
                           </p>
                           <p className="text-sm text-gray-500">{user.email}</p>
                           {user.phone && (
-                            <p className="text-xs text-gray-400">📱 {user.phone}</p>
+                            <p className="text-xs text-gray-400">{user.phone}</p>
                           )}
                         </div>
                       </div>
@@ -521,7 +521,7 @@ export default function AdminUsersPage() {
                     <td className="px-6 py-4">
                       {user.company_name ? (
                         <span className="px-3 py-1 bg-blue-100 border-2 border-blue-300 rounded-lg text-sm font-bold text-blue-900">
-                          🏢 {user.company_name}
+                          {user.company_name}
                         </span>
                       ) : (
                         <span className="px-3 py-1 bg-gray-100 border-2 border-gray-300 rounded-lg text-sm font-bold text-gray-600">
@@ -536,7 +536,7 @@ export default function AdminUsersPage() {
                           ? 'bg-purple-100 text-purple-800 border-2 border-purple-300'
                           : 'bg-gray-100 text-gray-800 border-2 border-gray-300'
                       }`}>
-                        {user.role === 'admin' ? '👑 Admin' : '👤 User'}
+                        {user.role === 'admin' ? 'Admin' : 'User'}
                       </span>
                     </td>
 
@@ -550,36 +550,37 @@ export default function AdminUsersPage() {
                       </span>
                     </td>
 
-                    <td className="px-6 py-4">
-                      <div className="flex justify-center gap-2">
+                    <td className="px-3 sm:px-6 py-4">
+                      <div className="flex flex-col sm:flex-row justify-center gap-1 sm:gap-2">
                         <button
                           onClick={() => handleEditUser(user)}
-                          className="px-3 py-2 bg-blue-500 text-white rounded-lg font-bold text-xs hover:bg-blue-600 transition"
+                          className="px-2 sm:px-3 py-1 sm:py-2 bg-blue-500 text-white rounded-lg font-bold text-xs hover:bg-blue-600 transition"
                           title="Edit User"
                         >
-                          ✏️ Edit
+                          Edit
                         </button>
                         <button
                           onClick={() => handleToggleActive(user.id, user.is_active)}
                           disabled={user.id === currentUserId}
-                          className={`px-3 py-2 rounded-lg font-bold text-xs transition ${
+                          className={`px-2 sm:px-3 py-1 sm:py-2 rounded-lg font-bold text-xs transition ${
                             user.is_active
                               ? 'bg-orange-500 text-white hover:bg-orange-600'
                               : 'bg-green-500 text-white hover:bg-green-600'
                           } ${user.id === currentUserId ? 'opacity-50 cursor-not-allowed' : ''}`}
                           title={user.is_active ? 'Deactivate User' : 'Activate User'}
                         >
-                          {user.is_active ? '🔒' : '🔓'}
+                          <span className="hidden sm:inline">{user.is_active ? 'Deactivate' : 'Activate'}</span>
+                          <span className="sm:hidden">{user.is_active ? 'Off' : 'On'}</span>
                         </button>
                         <button
                           onClick={() => handleDeleteUser(user.id)}
                           disabled={user.id === currentUserId}
-                          className={`px-3 py-2 bg-red-500 text-white rounded-lg font-bold text-xs hover:bg-red-600 transition ${
+                          className={`px-2 sm:px-3 py-1 sm:py-2 bg-red-500 text-white rounded-lg font-bold text-xs hover:bg-red-600 transition ${
                             user.id === currentUserId ? 'opacity-50 cursor-not-allowed' : ''
                           }`}
                           title="Delete User"
                         >
-                          🗑️
+                          Delete
                         </button>
                       </div>
                     </td>
@@ -594,7 +595,7 @@ export default function AdminUsersPage() {
       {/* Info Box */}
       <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 mt-6">
         <div className="flex items-start gap-4">
-          <span className="text-3xl">💡</span>
+          <span className="text-3xl font-bold text-blue-600">Info</span>
           <div>
             <h3 className="font-black text-blue-900 mb-2">How User Management Works</h3>
             <ul className="space-y-1 text-sm text-blue-800">
@@ -612,7 +613,7 @@ export default function AdminUsersPage() {
       {/* Create User Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full my-8">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 max-w-md w-full my-8 mx-4">
             <h2 className="text-2xl font-black mb-6">Create New User</h2>
 
             <form onSubmit={handleCreateUser} className="space-y-4">
@@ -674,7 +675,7 @@ export default function AdminUsersPage() {
                   <option value="">No company</option>
                   {companies.map(company => (
                     <option key={company.id} value={company.id}>
-                      🏢 {company.company_name}
+                      {company.company_name}
                     </option>
                   ))}
                 </select>
@@ -687,8 +688,8 @@ export default function AdminUsersPage() {
                   onChange={(e) => setFormData({ ...formData, role: e.target.value as 'user' | 'admin' })}
                   className="w-full px-4 py-2 border-2 rounded-lg focus:border-blue-500 focus:outline-none"
                 >
-                  <option value="user">👤 User</option>
-                  <option value="admin">👑 Admin</option>
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
                 </select>
               </div>
 
@@ -697,7 +698,7 @@ export default function AdminUsersPage() {
                   type="submit"
                   className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition"
                 >
-                  ➕ Create User
+                  Create User
                 </button>
                 <button
                   type="button"
@@ -718,7 +719,7 @@ export default function AdminUsersPage() {
       {/* Edit User Modal */}
       {isEditModalOpen && editingUser && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full my-8">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 max-w-md w-full my-8 mx-4">
             <h2 className="text-2xl font-black mb-6">Edit User</h2>
 
             <form onSubmit={handleUpdateUser} className="space-y-4">
@@ -762,7 +763,7 @@ export default function AdminUsersPage() {
                   <option value="">No company</option>
                   {companies.map(company => (
                     <option key={company.id} value={company.id}>
-                      🏢 {company.company_name}
+                      {company.company_name}
                     </option>
                   ))}
                 </select>
@@ -781,8 +782,8 @@ export default function AdminUsersPage() {
                     editingUser.id === currentUserId ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
                 >
-                  <option value="user">👤 User</option>
-                  <option value="admin">👑 Admin</option>
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
                 </select>
                 {editingUser.id === currentUserId && (
                   <p className="text-xs text-orange-600 mt-1">You cannot change your own role</p>
@@ -810,7 +811,7 @@ export default function AdminUsersPage() {
                   type="submit"
                   className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition"
                 >
-                  💾 Save Changes
+                  Save Changes
                 </button>
                 <button
                   type="button"

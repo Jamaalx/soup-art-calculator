@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (authError) {
-      console.error('❌ Auth error:', authError);
+      console.error('Auth error:', authError);
       return NextResponse.json(
         { error: `Failed to create auth user: ${authError.message}` },
         { status: 500 }
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('✅ Auth user created:', authData.user.id);
+    console.log('Auth user created:', authData.user.id);
 
     // Step 2: Get company name if company_id provided
     let company_name = null;
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
       });
 
     if (profileError) {
-      console.error('❌ Profile error:', profileError);
+      console.error('Profile error:', profileError);
       
       // Try to delete the auth user if profile creation failed
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('✅ Profile created for user:', authData.user.id);
+    console.log('Profile created for user:', authData.user.id);
 
     // Step 4: If company_id provided, copy templates (optional)
     if (company_id) {
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
             .from('products')
             .insert(userProducts);
 
-          console.log(`✅ Copied ${userProducts.length} products to user`);
+          console.log(`Copied ${userProducts.length} products to user`);
         }
 
         // Copy company categories to user
@@ -159,10 +159,10 @@ export async function POST(request: NextRequest) {
             .from('categories')
             .insert(userCategories);
 
-          console.log(`✅ Copied ${userCategories.length} categories to user`);
+          console.log(`Copied ${userCategories.length} categories to user`);
         }
       } catch (copyError) {
-        console.error('⚠️ Error copying templates:', copyError);
+        console.error('Error copying templates:', copyError);
         // Don't fail the whole request if template copying fails
       }
     }
@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
 
   } catch (error: any) {
-    console.error('❌ Unexpected error:', error);
+    console.error('Unexpected error:', error);
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
       { status: 500 }
@@ -198,7 +198,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    console.log('🗑️ Deleting user:', userId);
+    console.log('Deleting user:', userId);
 
     // Step 1: Delete user's products
     const { error: productsError } = await supabaseAdmin
@@ -207,7 +207,7 @@ export async function DELETE(request: NextRequest) {
       .eq('user_id', userId);
 
     if (productsError) {
-      console.error('⚠️ Error deleting products:', productsError);
+      console.error('Error deleting products:', productsError);
     }
 
     // Step 2: Delete user's categories
@@ -217,7 +217,7 @@ export async function DELETE(request: NextRequest) {
       .eq('user_id', userId);
 
     if (categoriesError) {
-      console.error('⚠️ Error deleting categories:', categoriesError);
+      console.error('Error deleting categories:', categoriesError);
     }
 
     // Step 3: Delete profile
@@ -227,7 +227,7 @@ export async function DELETE(request: NextRequest) {
       .eq('id', userId);
 
     if (profileError) {
-      console.error('❌ Error deleting profile:', profileError);
+      console.error('Error deleting profile:', profileError);
       return NextResponse.json(
         { error: `Failed to delete profile: ${profileError.message}` },
         { status: 500 }
@@ -238,14 +238,14 @@ export async function DELETE(request: NextRequest) {
     const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
     if (authError) {
-      console.error('❌ Error deleting auth user:', authError);
+      console.error('Error deleting auth user:', authError);
       return NextResponse.json(
         { error: `Failed to delete auth user: ${authError.message}` },
         { status: 500 }
       );
     }
 
-    console.log('✅ User deleted successfully:', userId);
+    console.log('User deleted successfully:', userId);
 
     return NextResponse.json({
       success: true,
@@ -253,7 +253,7 @@ export async function DELETE(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('❌ Unexpected error:', error);
+    console.error('Unexpected error:', error);
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
       { status: 500 }

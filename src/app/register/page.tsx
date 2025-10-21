@@ -55,7 +55,7 @@ export default function RegisterPage() {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#BBDCFF] via-white to-[#9eff55]">
         <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-8 border-4 border-black text-center">
-          <div className="text-6xl mb-4">✅</div>
+          <div className="text-6xl mb-4 font-bold text-green-600">Success</div>
           <h2 className="text-2xl font-black mb-4">CONT CREAT CU SUCCES!</h2>
           <p className="text-gray-700 font-semibold mb-6">
             Am trimis un email de verificare la <strong>{formData.email}</strong>
@@ -98,7 +98,7 @@ export default function RegisterPage() {
         <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-black">
           <div className="mb-6">
             <span className="inline-block px-4 py-2 bg-[#FFC857] rounded-full text-black text-sm font-bold border-2 border-black">
-              ✨ CONT NOU
+              CREATE ACCOUNT
             </span>
             <h2 className="text-2xl font-black mt-4 mb-2">Creează cont gratuit</h2>
             <p className="text-gray-600 font-semibold">Începe să optimizezi prețurile meniului</p>

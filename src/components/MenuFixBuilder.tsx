@@ -210,7 +210,7 @@ const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({
       {/* Step 1: Add Categories */}
       <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-black">
         <h3 className="text-2xl font-black mb-4 text-black">
-          📋 PASUL 1: ADAUGĂ CATEGORII
+          STEP 1: ADD CATEGORIES
         </h3>
         <p className="text-sm font-bold text-gray-700 mb-4">
           Selectează categoriile pentru combo (minimum 2)
@@ -283,7 +283,7 @@ const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({
       {categorySlots.length >= 2 && (
         <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-black">
           <h3 className="text-2xl font-black mb-4 text-black">
-            🎯 PASUL 2: SELECTEAZĂ PRODUSELE
+            STEP 2: SELECT PRODUCTS
           </h3>
           <p className="text-sm font-bold text-gray-700 mb-4">
             Alege câte un produs din fiecare categorie
@@ -328,7 +328,7 @@ const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({
       {selectedProductsArray.length >= 2 && (
         <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-black">
           <h3 className="text-2xl font-black mb-4 text-black">
-            💰 PASUL 3: CONFIGUREAZĂ COMBO-UL
+            STEP 3: CONFIGURE COMBO
           </h3>
 
           {/* Combo Name */}
@@ -449,7 +449,7 @@ const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({
           {/* Customer Discount Info */}
           <div className="p-4 bg-green-100 rounded-2xl border-2 border-black mb-6">
             <p className="text-sm font-black text-black">
-              🎉 ECONOMIE CLIENT (vs prețuri individuale): {comboCalculations.customerDiscount.toFixed(2)} LEI 
+              CLIENT SAVINGS (vs individual prices): {comboCalculations.customerDiscount.toFixed(2)} LEI 
               ({comboCalculations.customerDiscountPercent.toFixed(1)}%)
             </p>
           </div>
@@ -460,7 +460,7 @@ const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({
             disabled={!comboName.trim() || selectedProductsArray.length < 2}
             className="w-full py-4 bg-green-500 text-white rounded-2xl border-4 border-black font-black text-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            💾 SALVEAZĂ COMBO
+            SAVE COMBO
           </button>
         </div>
       )}
@@ -492,7 +492,7 @@ const MeniuFixBuilder: React.FC<MeniuFixBuilderProps> = ({
                     onClick={() => handleDeleteCombo(combo.id)}
                     className="px-4 py-2 bg-black text-white rounded-xl font-bold hover:bg-red-600"
                   >
-                    🗑️ ȘTERGE
+                    DELETE
                   </button>
                 </div>
 

@@ -87,7 +87,7 @@ export default function AdminProductsPage() {
       .order('sort_order');
 
     if (error) {
-      console.error('❌ Error fetching categories:', error);
+      console.error('Error fetching categories:', error);
     } else {
       setCategories(data || []);
     }
@@ -105,7 +105,7 @@ export default function AdminProductsPage() {
       .order('nume');
 
     if (error) {
-      console.error('❌ Error fetching products:', error);
+      console.error('Error fetching products:', error);
       alert('Error loading products: ' + error.message);
     } else {
       setProducts(data || []);
@@ -114,7 +114,7 @@ export default function AdminProductsPage() {
   };
 
   const fetchUnassignedProducts = async () => {
-    console.log('🔍 Fetching unassigned products...');
+    console.log('Fetching unassigned products...');
     console.log('Query conditions: company_id IS NULL, user_id IS NULL, is_active = true');
     
     const { data, error, count } = await supabase
@@ -124,7 +124,7 @@ export default function AdminProductsPage() {
       .is('user_id', null)
       .order('nume');
 
-    console.log('📊 Raw query result:');
+    console.log('Raw query result:');
     console.log('- Error:', error);
     console.log('- Count:', count);
     console.log('- Data length:', data?.length);
@@ -137,10 +137,10 @@ export default function AdminProductsPage() {
     console.log('- Inactive products:', inactiveCount);
 
     if (error) {
-      console.error('❌ Error fetching unassigned products:', error);
+      console.error('Error fetching unassigned products:', error);
     } else {
       const activeProducts = data?.filter(p => p.is_active) || [];
-      console.log('✅ Loaded unassigned products (active only):', activeProducts.length);
+      console.log('Loaded unassigned products (active only):', activeProducts.length);
       setUnassignedProducts(activeProducts);
     }
   };
@@ -166,7 +166,7 @@ export default function AdminProductsPage() {
     if (error) {
       alert('Error assigning products: ' + error.message);
     } else {
-      alert(`✅ Successfully assigned ${productIds.length} product(s) to company!`);
+      alert(`Successfully assigned ${productIds.length} product(s) to company!`);
       setSelectedProducts(new Set());
       setIsAssignModalOpen(false);
       fetchProducts();
@@ -204,7 +204,7 @@ export default function AdminProductsPage() {
         alert('Error updating product: ' + error.message);
         return;
       }
-      alert('✅ Product template updated successfully!');
+      alert('Product template updated successfully!');
     } else {
       const productData: ProductInsert = {
         product_id: formData.product_id,
@@ -227,7 +227,7 @@ export default function AdminProductsPage() {
         alert('Error creating product template: ' + error.message);
         return;
       }
-      alert('✅ Product template created successfully!');
+      alert('Product template created successfully!');
     }
 
     setIsModalOpen(false);
@@ -260,7 +260,7 @@ export default function AdminProductsPage() {
     if (error) {
       alert('Error deleting product: ' + error.message);
     } else {
-      alert('✅ Product template deleted successfully!');
+      alert('Product template deleted successfully!');
       fetchProducts();
     }
   };
@@ -315,7 +315,7 @@ export default function AdminProductsPage() {
       <div className="mt-6 bg-orange-50 border-2 border-orange-200 rounded-xl p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">⚠️</span>
+            <span className="text-2xl font-bold text-yellow-600">Warning</span>
             <div>
               <h3 className="font-black text-orange-900">
                 {unassignedProducts.length} Unassigned Product Template{unassignedProducts.length !== 1 ? 's' : ''}
@@ -348,7 +348,7 @@ export default function AdminProductsPage() {
                   onClick={() => setIsAssignModalOpen(true)}
                   className="px-4 py-2 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition"
                 >
-                  ➡️ Assign {selectedProducts.size} to Company
+                  Assign {selectedProducts.size} to Company
                 </button>
               )}
             </div>
@@ -392,7 +392,7 @@ export default function AdminProductsPage() {
 
       {!selectedCompanyId ? (
         <div className="mt-8 bg-blue-50 border-2 border-blue-200 rounded-xl p-12 text-center">
-          <span className="text-6xl mb-4 block">🏢</span>
+          <span className="text-6xl mb-4 block font-bold text-blue-600">Company</span>
           <h2 className="text-2xl font-black text-blue-900 mb-2">Select a Company</h2>
           <p className="text-blue-700">Choose a company to manage its product templates</p>
         </div>
@@ -424,7 +424,7 @@ export default function AdminProductsPage() {
           {categories.length === 0 ? (
             <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-6 mb-6">
               <div className="flex items-start gap-3">
-                <span className="text-2xl">⚠️</span>
+                <span className="text-2xl font-bold text-yellow-600">Warning</span>
                 <div>
                   <h3 className="font-black text-yellow-900 mb-1">No Categories Available</h3>
                   <p className="text-sm text-yellow-800">
@@ -443,7 +443,7 @@ export default function AdminProductsPage() {
             <>
               <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6">
                 <div className="flex items-start gap-3">
-                  <span className="text-2xl">💡</span>
+                  <span className="text-2xl font-bold text-blue-600">Info</span>
                   <div>
                     <h3 className="font-black text-blue-900 mb-1">About Product Templates</h3>
                     <p className="text-sm text-blue-800">
@@ -567,13 +567,13 @@ export default function AdminProductsPage() {
                             onClick={() => handleEdit(product)}
                             className="flex-1 px-3 py-2 bg-yellow-500 text-white rounded-lg font-bold hover:bg-yellow-600 transition"
                           >
-                            ✏️ Edit
+                            Edit
                           </button>
                           <button
                             onClick={() => handleDelete(product.id)}
                             className="flex-1 px-3 py-2 bg-red-500 text-white rounded-lg font-bold hover:bg-red-600 transition"
                           >
-                            🗑️ Delete
+                            Delete
                           </button>
                         </div>
                       </div>
@@ -599,7 +599,7 @@ export default function AdminProductsPage() {
                 onClick={handleAssignToCompany}
                 className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition"
               >
-                ✅ Yes, Assign
+                Yes, Assign
               </button>
               <button
                 onClick={() => setIsAssignModalOpen(false)}
@@ -713,7 +713,7 @@ export default function AdminProductsPage() {
                   type="submit"
                   className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition"
                 >
-                  {editingProduct ? '💾 Update' : '➕ Create'}
+                  {editingProduct ? 'Update' : 'Create'}
                 </button>
                 <button
                   type="button"

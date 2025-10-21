@@ -61,10 +61,10 @@ export function useCategories(): UseCategoriesReturn {
 
       // Set categories (even if empty array)
       if (dbCategories && dbCategories.length > 0) {
-        console.log(`✅ Loaded ${dbCategories.length} categories for user`);
+        console.log(`Loaded ${dbCategories.length} categories for user`);
         setCategories(dbCategories);
       } else {
-        console.log('ℹ️ User has 0 categories. They need to create categories or admin must assign templates.');
+        console.log('User has 0 categories. They need to create categories or admin must assign templates.');
         setCategories([]);
       }
 

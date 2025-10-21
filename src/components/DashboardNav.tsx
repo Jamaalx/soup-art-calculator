@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { Calculator, Shield, LogOut } from 'lucide-react';
 
 export default function DashboardNav() {
   const { user, signOut } = useAuth();
@@ -61,17 +62,19 @@ export default function DashboardNav() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push('/dashboard')}
-              className="px-5 py-2.5 bg-[#BBDCFF] border-2 border-black rounded-xl font-bold text-black hover:scale-105 transition-transform shadow-md"
+              className="px-5 py-2.5 bg-[#BBDCFF] border-2 border-black rounded-xl font-bold text-black hover:scale-105 transition-transform shadow-md flex items-center gap-2"
             >
-              📊 Calculator
+              <Calculator className="w-4 h-4" />
+              <span>Calculator</span>
             </button>
 
             {isAdmin && (
               <button
                 onClick={() => router.push('/dashboard/admin')}
-                className="px-5 py-2.5 bg-red-500 border-2 border-black rounded-xl font-bold text-white hover:scale-105 transition-transform shadow-md"
+                className="px-5 py-2.5 bg-red-500 border-2 border-black rounded-xl font-bold text-white hover:scale-105 transition-transform shadow-md flex items-center gap-2"
               >
-                🔐 Admin
+                <Shield className="w-4 h-4" />
+                <span>Admin</span>
               </button>
             )}
 
@@ -83,12 +86,13 @@ export default function DashboardNav() {
               </div>
             </div>
 
-            {/* Logout Button - FIXED: Now with white text and visible */}
+            {/* Logout Button */}
             <button
               onClick={handleSignOut}
-              className="px-5 py-2.5 bg-red-600 text-white border-2 border-black rounded-xl font-bold hover:bg-red-700 transition-all hover:scale-105 shadow-md"
+              className="px-5 py-2.5 bg-red-600 text-white border-2 border-black rounded-xl font-bold hover:bg-red-700 transition-all hover:scale-105 shadow-md flex items-center gap-2"
             >
-              🚪 Logout
+              <LogOut className="w-4 h-4" />
+              <span>Logout</span>
             </button>
           </div>
         </div>

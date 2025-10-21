@@ -206,7 +206,7 @@ export default function CompaniesPage() {
         alert('Error updating company: ' + error.message);
         return;
       }
-      alert('✅ Company updated successfully!');
+      alert('Company updated successfully!');
       setIsModalOpen(false);
       resetForm();
       fetchCompanies();
@@ -252,9 +252,9 @@ export default function CompaniesPage() {
 
       if (settingsError) {
         console.error('Error creating settings:', settingsError);
-        alert('⚠️ Company created but settings failed: ' + settingsError.message);
+        alert('Company created but settings failed: ' + settingsError.message);
       } else {
-        alert('✅ Company and settings created successfully!');
+        alert('Company and settings created successfully!');
       }
 
       setIsModalOpen(false);
@@ -324,7 +324,7 @@ export default function CompaniesPage() {
       }
     }
 
-    alert('✅ Settings saved successfully!');
+    alert('Settings saved successfully!');
     setIsSettingsModalOpen(false);
   };
 
@@ -355,7 +355,7 @@ export default function CompaniesPage() {
     if (error) {
       alert('Error updating company: ' + error.message);
     } else {
-      alert(`✅ Company ${!currentStatus ? 'activated' : 'deactivated'}!`);
+      alert(`Company ${!currentStatus ? 'activated' : 'deactivated'}!`);
       fetchCompanies();
     }
   };
@@ -469,7 +469,7 @@ export default function CompaniesPage() {
                 <p className="text-sm text-gray-600 mb-1">📞 {company.phone}</p>
               )}
               {company.cui && (
-                <p className="text-sm text-gray-600 mb-1">🏢 CUI: {company.cui}</p>
+                <p className="text-sm text-gray-600 mb-1">CUI: {company.cui}</p>
               )}
 
               <div className="flex gap-2 mt-4">
@@ -477,13 +477,13 @@ export default function CompaniesPage() {
                   onClick={() => handleOpenSettingsModal(company)}
                   className="flex-1 px-3 py-2 bg-blue-500 text-white rounded-lg font-bold hover:bg-blue-600 transition"
                 >
-                  ⚙️ Settings
+                  Settings
                 </button>
                 <button
                   onClick={() => handleEdit(company)}
                   className="flex-1 px-3 py-2 bg-yellow-500 text-white rounded-lg font-bold hover:bg-yellow-600 transition"
                 >
-                  ✏️ Edit
+                  Edit
                 </button>
                 <button
                   onClick={() => handleToggleActive(company.id, company.is_active)}
@@ -493,7 +493,7 @@ export default function CompaniesPage() {
                       : 'bg-green-500 text-white hover:bg-green-600'
                   }`}
                 >
-                  {company.is_active ? '🚫' : '✅'}
+                  {company.is_active ? 'Deactivate' : 'Activate'}
                 </button>
               </div>
             </div>
@@ -577,13 +577,13 @@ export default function CompaniesPage() {
               {!editingCompany && (
                 <div className="space-y-4">
                   <div className="bg-blue-50 rounded-xl p-4 border-2 border-blue-200">
-                    <h3 className="text-lg font-black mb-2 text-blue-900">⚙️ Calculator Settings</h3>
+                    <h3 className="text-lg font-black mb-2 text-blue-900">Calculator Settings</h3>
                     <p className="text-sm text-blue-700 mb-4">Configure default calculation values for this company</p>
                   </div>
 
                   {/* General Settings */}
                   <div className="bg-green-50 rounded-xl p-4 border-2 border-green-200">
-                    <h4 className="font-black text-green-900 mb-3">📊 General Settings</h4>
+                    <h4 className="font-black text-green-900 mb-3">General Settings</h4>
                     <div className="space-y-3">
                       {generalSettings.map((setting, idx) => (
                         <div key={setting.setting_key} className="bg-white rounded-lg p-3">
@@ -663,7 +663,7 @@ export default function CompaniesPage() {
                   type="submit"
                   className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700"
                 >
-                  {editingCompany ? '💾 Update Company' : '➕ Create Company & Settings'}
+                  {editingCompany ? 'Update Company' : 'Create Company & Settings'}
                 </button>
                 <button
                   type="button"
@@ -686,7 +686,7 @@ export default function CompaniesPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-white rounded-2xl p-6 max-w-3xl w-full my-8 max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-black mb-4">
-              ⚙️ Calculator Settings: {selectedCompanyForSettings.company_name}
+              Calculator Settings: {selectedCompanyForSettings.company_name}
             </h2>
 
             <div className="space-y-4">
@@ -765,7 +765,7 @@ export default function CompaniesPage() {
                 onClick={handleSaveSettings}
                 className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700"
               >
-                💾 Save Settings
+                Save Settings
               </button>
               <button
                 onClick={() => setIsSettingsModalOpen(false)}

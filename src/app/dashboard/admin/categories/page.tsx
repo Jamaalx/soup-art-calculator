@@ -82,7 +82,7 @@ export default function AdminCategoriesPage() {
       .order('sort_order');
 
     if (error) {
-      console.error('❌ Error fetching categories:', error);
+      console.error('Error fetching categories:', error);
       alert('Error loading categories: ' + error.message);
     } else {
       setCategories(data || []);
@@ -100,9 +100,9 @@ export default function AdminCategoriesPage() {
       .order('sort_order');
 
     if (error) {
-      console.error('❌ Error fetching unassigned categories:', error);
+      console.error('Error fetching unassigned categories:', error);
     } else {
-      console.log('✅ Loaded unassigned categories:', data?.length);
+      console.log('Loaded unassigned categories:', data?.length);
       setUnassignedCategories(data || []);
     }
   };
@@ -128,7 +128,7 @@ export default function AdminCategoriesPage() {
     if (error) {
       alert('Error assigning categories: ' + error.message);
     } else {
-      alert(`✅ Successfully assigned ${categoryIds.length} categor${categoryIds.length === 1 ? 'y' : 'ies'} to company!`);
+      alert(`Successfully assigned ${categoryIds.length} categor${categoryIds.length === 1 ? 'y' : 'ies'} to company!`);
       setSelectedCategories(new Set());
       setIsAssignModalOpen(false);
       fetchCategories();
@@ -174,7 +174,7 @@ export default function AdminCategoriesPage() {
         alert('Error updating category: ' + error.message);
         return;
       }
-      alert('✅ Category template updated successfully!');
+      alert('Category template updated successfully!');
     } else {
       const categoryData: CategoryInsert = {
         category_id: formData.category_id,
@@ -195,7 +195,7 @@ export default function AdminCategoriesPage() {
         alert('Error creating category template: ' + error.message);
         return;
       }
-      alert('✅ Category template created successfully!');
+      alert('Category template created successfully!');
     }
 
     setIsModalOpen(false);
@@ -226,7 +226,7 @@ export default function AdminCategoriesPage() {
     if (error) {
       alert('Error deleting category: ' + error.message);
     } else {
-      alert('✅ Category template deleted successfully!');
+      alert('Category template deleted successfully!');
       fetchCategories();
     }
   };
@@ -262,7 +262,7 @@ export default function AdminCategoriesPage() {
         <div className="mt-6 bg-orange-50 border-2 border-orange-200 rounded-xl p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <span className="text-2xl">⚠️</span>
+              <span className="text-2xl font-bold text-yellow-600">Warning</span>
               <div>
                 <h3 className="font-black text-orange-900">
                   {unassignedCategories.length} Unassigned Category Template{unassignedCategories.length !== 1 ? 's' : ''}
@@ -291,7 +291,7 @@ export default function AdminCategoriesPage() {
                     onClick={() => setIsAssignModalOpen(true)}
                     className="px-4 py-2 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition"
                   >
-                    ➡️ Assign {selectedCategories.size} to Company
+                    Assign {selectedCategories.size} to Company
                   </button>
                 )}
               </div>
@@ -334,7 +334,7 @@ export default function AdminCategoriesPage() {
 
       {!selectedCompanyId ? (
         <div className="mt-8 bg-purple-50 border-2 border-purple-200 rounded-xl p-12 text-center">
-          <span className="text-6xl mb-4 block">🏢</span>
+          <span className="text-6xl mb-4 block font-bold text-blue-600">Company</span>
           <h2 className="text-2xl font-black text-purple-900 mb-2">Select a Company</h2>
           <p className="text-purple-700">Choose a company to manage its category templates</p>
         </div>
@@ -364,7 +364,7 @@ export default function AdminCategoriesPage() {
 
           <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6">
             <div className="flex items-start gap-3">
-              <span className="text-2xl">💡</span>
+              <span className="text-2xl font-bold text-blue-600">Info</span>
               <div>
                 <h3 className="font-black text-blue-900 mb-1">About Category Templates</h3>
                 <p className="text-sm text-blue-800">
@@ -450,13 +450,13 @@ export default function AdminCategoriesPage() {
                       onClick={() => handleEdit(category)}
                       className="flex-1 px-3 py-2 bg-yellow-500 text-white rounded-lg font-bold hover:bg-yellow-600 transition"
                     >
-                      ✏️ Edit
+                      Edit
                     </button>
                     <button
                       onClick={() => handleDelete(category.id)}
                       className="flex-1 px-3 py-2 bg-red-500 text-white rounded-lg font-bold hover:bg-red-600 transition"
                     >
-                      🗑️ Delete
+                      Delete
                     </button>
                   </div>
                 </div>
@@ -479,7 +479,7 @@ export default function AdminCategoriesPage() {
                 onClick={handleAssignToCompany}
                 className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition"
               >
-                ✅ Yes, Assign
+                Yes, Assign
               </button>
               <button
                 onClick={() => setIsAssignModalOpen(false)}
@@ -571,7 +571,7 @@ export default function AdminCategoriesPage() {
                   type="submit"
                   className="flex-1 px-6 py-3 bg-purple-600 text-white rounded-lg font-bold hover:bg-purple-700 transition"
                 >
-                  {editingCategory ? '💾 Update' : '➕ Create'}
+                  {editingCategory ? 'Update' : 'Create'}
                 </button>
                 <button
                   type="button"

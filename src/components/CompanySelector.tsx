@@ -80,7 +80,7 @@ export default function CompanySelector({ selectedCompanyId, onCompanyChange }: 
       return;
     }
 
-    alert('✅ Company created successfully!');
+    alert('Company created successfully!');
     setIsModalOpen(false);
     setNewCompanyName('');
     fetchCompanies();
@@ -105,7 +105,7 @@ export default function CompanySelector({ selectedCompanyId, onCompanyChange }: 
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1">
             <label className="block text-sm font-bold text-gray-700 mb-2">
-              🏢 Select Company
+              Select Company
             </label>
             <select
               value={selectedCompanyId || ''}
@@ -142,7 +142,7 @@ export default function CompanySelector({ selectedCompanyId, onCompanyChange }: 
         {!selectedCompanyId && companies.length > 0 && (
           <div className="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
             <p className="text-sm text-yellow-800">
-              ⚠️ Please select a company to manage its data
+              Please select a company to manage its data
             </p>
           </div>
         )}
@@ -150,7 +150,7 @@ export default function CompanySelector({ selectedCompanyId, onCompanyChange }: 
         {companies.length === 0 && (
           <div className="mt-3 p-3 bg-orange-50 rounded-lg border border-orange-200">
             <p className="text-sm text-orange-800">
-              📢 No companies found. Create your first company to get started!
+              No companies found. Create your first company to get started!
             </p>
           </div>
         )}
@@ -177,7 +177,7 @@ export default function CompanySelector({ selectedCompanyId, onCompanyChange }: 
 
               <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3">
                 <p className="text-xs text-blue-800">
-                  💡 <strong>Tip:</strong> Each company has isolated products, categories, and settings.
+                  <strong>Tip:</strong> Each company has isolated products, categories, and settings.
                 </p>
               </div>
 

@@ -241,7 +241,7 @@ const MeniuVariatiiBuilder: React.FC<MeniuVariatiiBuilderProps> = ({
       {/* Step 1: Add Categories */}
       <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-black">
         <h3 className="text-2xl font-black mb-4 text-black">
-          📋 PASUL 1: ADAUGĂ CATEGORII
+          STEP 1: ADD CATEGORIES
         </h3>
         <p className="text-sm font-bold text-gray-700 mb-4">
           Selectează categoriile pentru meniu (minimum 2)
@@ -314,7 +314,7 @@ const MeniuVariatiiBuilder: React.FC<MeniuVariatiiBuilderProps> = ({
       {categorySlots.length >= 2 && (
         <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-black">
           <h3 className="text-2xl font-black mb-4 text-black">
-            🎯 PASUL 2: SELECTEAZĂ PRODUSELE
+            STEP 2: SELECT PRODUCTS
           </h3>
           <p className="text-sm font-bold text-gray-700 mb-4">
             Alege produsele din fiecare categorie (poți selecta multiple)
@@ -392,7 +392,7 @@ const MeniuVariatiiBuilder: React.FC<MeniuVariatiiBuilderProps> = ({
       {categorySlots.length >= 2 && totalSelectedProducts >= 2 && (
         <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-black">
           <h3 className="text-2xl font-black mb-4 text-black">
-            💰 PASUL 3: SETEAZĂ PREȚUL ȘI GENEREAZĂ
+            STEP 3: SET PRICE AND GENERATE
           </h3>
 
           {/* Price Slider */}
@@ -462,7 +462,7 @@ const MeniuVariatiiBuilder: React.FC<MeniuVariatiiBuilderProps> = ({
             onClick={handleGenerateCombinations}
             className="w-full py-4 bg-green-500 text-white rounded-2xl border-4 border-black font-black text-lg hover:bg-green-600"
           >
-            🚀 GENEREAZĂ COMBINAȚII
+            GENERATE COMBINATIONS
           </button>
         </div>
       )}
@@ -474,7 +474,7 @@ const MeniuVariatiiBuilder: React.FC<MeniuVariatiiBuilderProps> = ({
           <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-black">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-2xl font-black text-black">
-                📊 REZULTATE COMBINAȚII
+                COMBINATION RESULTS
               </h3>
               <button
                 onClick={handleReset}
@@ -544,7 +544,7 @@ const MeniuVariatiiBuilder: React.FC<MeniuVariatiiBuilderProps> = ({
           {/* Combinations List */}
           <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-black">
             <h3 className="text-2xl font-black mb-4 text-black">
-              📋 TOP {generatedCombinations.length} COMBINAȚII
+              TOP {generatedCombinations.length} COMBINATIONS
             </h3>
 
             <div className="space-y-3">
