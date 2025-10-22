@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useMenuExport } from '@/lib/hooks/useMenuExport';
 import { ExportableProduct, ExportPlatform } from '@/types';
 import { 
@@ -128,7 +128,7 @@ export default function MenuExportWizard() {
       case 'products':
         return selectedProducts.length > 0;
       case 'format':
-        return selectedFormat !== '';
+        return !!selectedFormat;
       case 'review':
         return true;
       default:
