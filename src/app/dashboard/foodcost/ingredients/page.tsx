@@ -23,7 +23,17 @@ export default function IngredientsPage() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   
   // Form state
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    category: string;
+    brand: string;
+    unit: 'kg' | 'l' | 'piece' | 'g' | 'ml';
+    cost_per_unit: number;
+    supplier_id: string;
+    purchase_location: string;
+    notes: string;
+    priceChangeReason: string;
+  }>({
     name: '',
     category: '',
     brand: '',
@@ -242,7 +252,7 @@ export default function IngredientsPage() {
           <div className="text-center py-12">
             <Package className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-bold text-gray-900 mb-2">
-              {ingredients.length === 0 ? (t('no-ingredients-yet') || 'No Ingredients Yet') : (t('no-ingredients-found') || 'No Ingredients Found')}
+              {ingredients.length === 0 ? (t('no-ingredients-yet') || 'No Ingredients Yet') : (t('no-ingredients-found' as any) || 'No Ingredients Found')}
             </h3>
             <p className="text-gray-500 font-medium mb-4">
               {ingredients.length === 0
