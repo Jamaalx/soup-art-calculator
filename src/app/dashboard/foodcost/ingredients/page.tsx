@@ -27,7 +27,7 @@ export default function IngredientsPage() {
     name: '',
     category: '',
     brand: '',
-    unit: 'kg' as const,
+    unit: 'kg',
     cost_per_unit: 0,
     supplier_id: '',
     purchase_location: '',
@@ -43,8 +43,8 @@ export default function IngredientsPage() {
     return matchesSearch && matchesCategory;
   });
 
-  // Get unique categories
-  const categories = Array.from(new Set(ingredients.map(ing => ing.category))).filter(Boolean);
+  // Get unique categories from ingredients
+  const ingredientCategories = Array.from(new Set(ingredients.map(ing => ing.category))).filter(Boolean);
 
   const resetForm = () => {
     setFormData({
@@ -112,7 +112,7 @@ export default function IngredientsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm(t('delete-ingredient-confirm') || 'Are you sure you want to delete this ingredient?')) {
+    if (confirm(t('delete-ingredient-confirm' as any) || 'Are you sure you want to delete this ingredient?')) {
       try {
         await deleteIngredient(id);
       } catch (err) {
@@ -126,7 +126,7 @@ export default function IngredientsPage() {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-green-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 font-semibold">{t('loading') || 'Loading ingredients...'}}</p>
+          <p className="text-gray-600 font-semibold">{t('loading') || 'Loading ingredients...'}</p>
         </div>
       </div>
     );
@@ -147,8 +147,8 @@ export default function IngredientsPage() {
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="bg-gray-50 rounded-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
           <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
-            <h2 className="text-xl font-bold">{t('price-history') || 'Price History'}</h2>
-            <button 
+            <h2 className="text-xl font-bold">{t('price-history' as any) || 'Price History'}</h2>
+            <button
               onClick={() => setShowPriceHistory(null)}
               className="p-2 hover:bg-gray-100 rounded-lg transition"
             >
@@ -197,7 +197,7 @@ export default function IngredientsPage() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
-                placeholder={t('search-ingredients') || 'Search ingredients...'}
+                placeholder={t('search-ingredients' as any) || 'Search ingredients...'}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
@@ -210,7 +210,7 @@ export default function IngredientsPage() {
               className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition"
             >
               <Plus className="w-5 h-5" />
-              {t('add-new') || 'Add New'} {t('ingredient') || 'Ingredient'}
+              {t('add-new') || 'Add New'} {t('ingredient' as any) || 'Ingredient'}
             </button>
           </div>
 
@@ -221,16 +221,16 @@ export default function IngredientsPage() {
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             >
-              <option value="all">{t('all-categories') || 'All Categories'}</option>
-              {categories.map(category => (
+              <option value="all">{t('all-categories' as any) || 'All Categories'}</option>
+              {ingredientCategories.map(category => (
                 <option key={category} value={category}>
                   {category.charAt(0).toUpperCase() + category.slice(1)}
                 </option>
               ))}
             </select>
-            
+
             <div className="text-sm text-gray-600">
-              {t('showing') || 'Showing'} {filteredIngredients.length} {t('of') || 'of'} {ingredients.length} {t('ingredients') || 'ingredients'}
+              {t('showing' as any) || 'Showing'} {filteredIngredients.length} {t('of') || 'of'} {ingredients.length} {t('ingredients') || 'ingredients'}
             </div>
           </div>
         </div>
@@ -245,9 +245,9 @@ export default function IngredientsPage() {
               {ingredients.length === 0 ? (t('no-ingredients-yet') || 'No Ingredients Yet') : (t('no-ingredients-found') || 'No Ingredients Found')}
             </h3>
             <p className="text-gray-500 font-medium mb-4">
-              {ingredients.length === 0 
+              {ingredients.length === 0
                 ? (t('no-ingredients-desc') || 'Start by adding your first ingredient to build your database')
-                : (t('try-different-search') || 'Try a different search term or category filter')
+                : (t('try-different-search' as any) || 'Try a different search term or category filter')
               }
             </p>
             {ingredients.length === 0 && (
@@ -270,10 +270,10 @@ export default function IngredientsPage() {
                     <div className="flex justify-between items-start mb-2">
                       <div className="font-bold text-gray-900">{ingredient.name}</div>
                       <div className="flex items-center gap-1">
-                        <button 
+                        <button
                           onClick={() => setShowPriceHistory(ingredient.id)}
                           className="p-1 text-purple-600 hover:bg-purple-100 rounded transition"
-                          title={t('price-history') || 'Price History'}
+                          title={t('price-history' as any) || 'Price History'}
                         >
                           <History className="w-4 h-4" />
                         </button>
@@ -357,10 +357,10 @@ export default function IngredientsPage() {
                       <td className="px-4 lg:px-6 py-3 text-gray-700">{ingredient.purchase_location || '-'}</td>
                       <td className="px-4 lg:px-6 py-3">
                         <div className="flex items-center gap-1">
-                          <button 
+                          <button
                             onClick={() => setShowPriceHistory(ingredient.id)}
                             className="p-2 text-purple-600 hover:bg-purple-100 rounded-lg transition"
-                            title={t('price-history') || 'Price History'}
+                            title={t('price-history' as any) || 'Price History'}
                           >
                             <History className="w-4 h-4" />
                           </button>
@@ -394,9 +394,9 @@ export default function IngredientsPage() {
             {/* Modal Header */}
             <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between rounded-t-xl">
               <h3 className="text-xl font-bold text-gray-900">
-                {editingIngredient ? (t('edit-ingredient') || 'Edit Ingredient') : (t('add-new-ingredient') || 'Add New Ingredient')}
+                {editingIngredient ? (t('edit-ingredient' as any) || 'Edit Ingredient') : (t('add-new-ingredient' as any) || 'Add New Ingredient')}
               </h3>
-              <button 
+              <button
                 onClick={() => setShowAddForm(false)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition"
               >
@@ -447,7 +447,7 @@ export default function IngredientsPage() {
                       ))}
                     </select>
                     {categoriesLoading && (
-                      <div className="text-xs text-gray-500 mt-1">{t('loading-categories') || 'Loading categories...'}</div>
+                      <div className="text-xs text-gray-500 mt-1">{t('loading-categories' as any) || 'Loading categories...'}</div>
                     )}
                   </div>
 
@@ -459,7 +459,7 @@ export default function IngredientsPage() {
                       type="text"
                       value={formData.brand}
                       onChange={(e) => setFormData(prev => ({ ...prev, brand: e.target.value }))}
-                      placeholder={t('brand-name') || 'Brand name (optional)'}
+                      placeholder={t('brand-name' as any) || 'Brand name (optional)'}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                     />
                   </div>
@@ -471,7 +471,7 @@ export default function IngredientsPage() {
                     <textarea
                       value={formData.notes}
                       onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                      placeholder={t('additional-notes') || 'Additional notes (optional)'}
+                      placeholder={t('additional-notes' as any) || 'Additional notes (optional)'}
                       rows={3}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                     />
@@ -490,14 +490,14 @@ export default function IngredientsPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         {t('unit') || 'Unit'} *
                       </label>
-                      <select 
+                      <select
                         required
                         value={formData.unit}
                         onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value as any }))}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                         disabled={unitsLoading}
                       >
-                        <option value="">{unitsLoading ? (t('loading') || 'Loading...') : (t('select-unit') || 'Select Unit')}</option>
+                        <option value="">{unitsLoading ? (t('loading') || 'Loading...') : (t('select-unit' as any) || 'Select Unit')}</option>
                         {units.map(unit => (
                           <option key={unit.id} value={unit.abbreviation}>
                             {unit.name} ({unit.abbreviation})
@@ -531,7 +531,7 @@ export default function IngredientsPage() {
                       type="text"
                       value={formData.supplier_id}
                       onChange={(e) => setFormData(prev => ({ ...prev, supplier_id: e.target.value }))}
-                      placeholder={t('supplier-name') || 'Supplier name (optional)'}
+                      placeholder={t('supplier-name' as any) || 'Supplier name (optional)'}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                     />
                   </div>
@@ -540,30 +540,30 @@ export default function IngredientsPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       {t('purchase-location') || 'Purchase Location'}
                     </label>
-                    <select 
+                    <select
                       value={formData.purchase_location}
                       onChange={(e) => setFormData(prev => ({ ...prev, purchase_location: e.target.value }))}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                     >
-                      <option value="">{t('select-location') || 'Select location (optional)'}</option>
+                      <option value="">{t('select-location' as any) || 'Select location (optional)'}</option>
                       <option value="in-store">{t('in-store') || 'In-Store'}</option>
                       <option value="supplier">{t('supplier') || 'Supplier'}</option>
                       <option value="online">{t('online') || 'Online'}</option>
-                      <option value="market">{t('market') || 'Market'}</option>
-                      <option value="wholesale">{t('wholesale') || 'Wholesale'}</option>
+                      <option value="market">{t('market' as any) || 'Market'}</option>
+                      <option value="wholesale">{t('wholesale' as any) || 'Wholesale'}</option>
                     </select>
                   </div>
 
                   {editingIngredient && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        {t('price-change-reason') || 'Reason for Price Change'}
+                        {t('price-change-reason' as any) || 'Reason for Price Change'}
                       </label>
                       <input
                         type="text"
                         value={formData.priceChangeReason}
                         onChange={(e) => setFormData(prev => ({ ...prev, priceChangeReason: e.target.value }))}
-                        placeholder={t('price-change-reason-placeholder') || 'e.g., Market price increase, new supplier, etc.'}
+                        placeholder={t('price-change-reason-placeholder' as any) || 'e.g., Market price increase, new supplier, etc.'}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                       />
                     </div>
@@ -584,7 +584,7 @@ export default function IngredientsPage() {
                   type="submit"
                   className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-bold"
                 >
-                  {editingIngredient ? (t('update-ingredient') || 'Update Ingredient') : (t('add-ingredient') || 'Add Ingredient')}
+                  {editingIngredient ? (t('update-ingredient' as any) || 'Update Ingredient') : (t('add-ingredient') || 'Add Ingredient')}
                 </button>
               </div>
             </form>
