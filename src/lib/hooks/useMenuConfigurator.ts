@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { menuExportService } from '@/lib/services/menuExportService';
+import { menuExportService } from '@/lib/services/menuConfiguratorService';
 import { 
   ExportableProduct,
   MenuExportTemplate,
