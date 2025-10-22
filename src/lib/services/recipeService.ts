@@ -1,7 +1,16 @@
 import { createClient } from '@/lib/supabase/client';
-import { Recipe, Ingredient, RecipeIngredient } from '@/types';
+import type { Database } from '@/lib/supabase/database';
 
 const supabase = createClient();
+
+// Use actual database types
+export type Recipe = Database['public']['Tables']['recipes']['Row'];
+export type RecipeInsert = Database['public']['Tables']['recipes']['Insert'];
+export type RecipeUpdate = Database['public']['Tables']['recipes']['Update'];
+
+export type RecipeIngredient = Database['public']['Tables']['recipe_ingredients']['Row'];
+export type RecipeIngredientInsert = Database['public']['Tables']['recipe_ingredients']['Insert'];
+export type RecipeIngredientUpdate = Database['public']['Tables']['recipe_ingredients']['Update'];
 
 export const recipeService = {
   // Get all recipes for the current company
@@ -39,32 +48,10 @@ export const recipeService = {
   },
 
   // Create new recipe
-  async createRecipe(recipe: Omit<Recipe, 'id' | 'created_at' | 'updated_at'>): Promise<Recipe> {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) throw new Error('Not authenticated');
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('company_id')
-      .eq('id', user.user.id)
-      .single();
-
-    // Calculate costs
-    const totalCost = recipe.ingredients.reduce((sum, ing) => sum + ing.cost, 0);
-    const costPerServing = totalCost / recipe.servings;
-    const profitMargin = recipe.selling_price 
-      ? ((recipe.selling_price - costPerServing) / recipe.selling_price) * 100
-      : 0;
-
+  async createRecipe(recipe: RecipeInsert): Promise<Recipe> {
     const { data, error } = await supabase
       .from('recipes')
-      .insert({
-        ...recipe,
-        company_id: profile?.company_id,
-        total_cost: totalCost,
-        cost_per_serving: costPerServing,
-        profit_margin: profitMargin
-      })
+      .insert(recipe)
       .select()
       .single();
 
@@ -73,30 +60,10 @@ export const recipeService = {
   },
 
   // Update recipe
-  async updateRecipe(id: string, updates: Partial<Recipe>): Promise<Recipe> {
-    // Recalculate costs if ingredients changed
-    let calculatedUpdates = { ...updates };
-    
-    if (updates.ingredients || updates.servings) {
-      const totalCost = updates.ingredients 
-        ? updates.ingredients.reduce((sum, ing) => sum + ing.cost, 0)
-        : 0;
-      const costPerServing = totalCost / (updates.servings || 1);
-      const profitMargin = updates.selling_price 
-        ? ((updates.selling_price - costPerServing) / updates.selling_price) * 100
-        : 0;
-
-      calculatedUpdates = {
-        ...calculatedUpdates,
-        total_cost: totalCost,
-        cost_per_serving: costPerServing,
-        profit_margin: profitMargin
-      };
-    }
-
+  async updateRecipe(id: string, updates: RecipeUpdate): Promise<Recipe> {
     const { data, error } = await supabase
       .from('recipes')
-      .update(calculatedUpdates)
+      .update(updates)
       .eq('id', id)
       .select()
       .single();
@@ -115,64 +82,22 @@ export const recipeService = {
     if (error) throw error;
   },
 
-  // Link recipe to product
-  async linkToProduct(recipeId: string, productId: string): Promise<void> {
-    const { error } = await supabase
-      .from('recipes')
-      .update({ product_id: productId })
-      .eq('id', recipeId);
-
-    if (error) throw error;
-
-    // Update product cost based on recipe
-    const recipe = await this.getRecipe(recipeId);
-    if (recipe) {
-      await supabase
-        .from('products')
-        .update({ pret_cost: recipe.cost_per_serving })
-        .eq('id', productId);
-    }
-  },
-
-  // Get ingredients
-  async getIngredients(): Promise<Ingredient[]> {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) throw new Error('Not authenticated');
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('company_id')
-      .eq('id', user.user.id)
-      .single();
-
+  // Get recipe ingredients
+  async getRecipeIngredients(recipeId: string): Promise<RecipeIngredient[]> {
     const { data, error } = await supabase
-      .from('ingredients')
+      .from('recipe_ingredients')
       .select('*')
-      .eq('company_id', profile?.company_id)
-      .eq('is_active', true)
-      .order('name');
+      .eq('recipe_id', recipeId);
 
     if (error) throw error;
     return data || [];
   },
 
-  // Create ingredient
-  async createIngredient(ingredient: Omit<Ingredient, 'id' | 'created_at' | 'updated_at'>): Promise<Ingredient> {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) throw new Error('Not authenticated');
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('company_id')
-      .eq('id', user.user.id)
-      .single();
-
+  // Add ingredient to recipe
+  async addRecipeIngredient(recipeIngredient: RecipeIngredientInsert): Promise<RecipeIngredient> {
     const { data, error } = await supabase
-      .from('ingredients')
-      .insert({
-        ...ingredient,
-        company_id: profile?.company_id
-      })
+      .from('recipe_ingredients')
+      .insert(recipeIngredient)
       .select()
       .single();
 
@@ -180,10 +105,10 @@ export const recipeService = {
     return data;
   },
 
-  // Update ingredient
-  async updateIngredient(id: string, updates: Partial<Ingredient>): Promise<Ingredient> {
+  // Update recipe ingredient
+  async updateRecipeIngredient(id: string, updates: RecipeIngredientUpdate): Promise<RecipeIngredient> {
     const { data, error } = await supabase
-      .from('ingredients')
+      .from('recipe_ingredients')
       .update(updates)
       .eq('id', id)
       .select()
@@ -193,54 +118,27 @@ export const recipeService = {
     return data;
   },
 
-  // Delete ingredient (soft delete)
-  async deleteIngredient(id: string): Promise<void> {
+  // Remove ingredient from recipe
+  async removeRecipeIngredient(id: string): Promise<void> {
     const { error } = await supabase
-      .from('ingredients')
-      .update({ is_active: false })
+      .from('recipe_ingredients')
+      .delete()
       .eq('id', id);
 
     if (error) throw error;
   },
 
-  // Calculate recipe profitability
-  calculateProfitability(recipe: Recipe, sellingPrice: number): {
-    profit: number;
-    profitMargin: number;
-    markupPercent: number;
-  } {
-    const profit = sellingPrice - recipe.cost_per_serving;
-    const profitMargin = (profit / sellingPrice) * 100;
-    const markupPercent = (profit / recipe.cost_per_serving) * 100;
+  // Get recipes by category
+  async getRecipesByCategory(companyId: string, category: string): Promise<Recipe[]> {
+    const { data, error } = await supabase
+      .from('recipes')
+      .select('*')
+      .eq('company_id', companyId)
+      .eq('category', category)
+      .eq('is_active', true)
+      .order('name');
 
-    return {
-      profit,
-      profitMargin,
-      markupPercent
-    };
-  },
-
-  // Get recipe insights
-  async getRecipeInsights(): Promise<{
-    totalRecipes: number;
-    averageFoodCost: number;
-    mostProfitable: Recipe | null;
-    leastProfitable: Recipe | null;
-  }> {
-    const recipes = await this.getRecipes();
-    
-    const totalRecipes = recipes.length;
-    const averageFoodCost = recipes.reduce((sum, r) => sum + r.cost_per_serving, 0) / totalRecipes || 0;
-    
-    const withProfit = recipes.filter(r => r.selling_price && r.profit_margin);
-    const mostProfitable = withProfit.sort((a, b) => (b.profit_margin || 0) - (a.profit_margin || 0))[0] || null;
-    const leastProfitable = withProfit.sort((a, b) => (a.profit_margin || 0) - (b.profit_margin || 0))[0] || null;
-
-    return {
-      totalRecipes,
-      averageFoodCost,
-      mostProfitable,
-      leastProfitable
-    };
+    if (error) throw error;
+    return data || [];
   }
 };
