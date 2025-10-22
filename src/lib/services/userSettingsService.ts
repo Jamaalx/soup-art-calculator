@@ -1,6 +1,4 @@
-import { createClient } from '@/lib/supabase/client';
-
-const supabase = createClient();
+import { supabase } from '@/lib/supabase';
 
 export interface UserSettings {
   id: string;
