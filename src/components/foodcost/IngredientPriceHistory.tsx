@@ -35,10 +35,10 @@ export default function IngredientPriceHistory({ ingredientId, ingredientName }:
       <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-6 text-center">
         <Info className="w-12 h-12 text-gray-400 mx-auto mb-3" />
         <h3 className="text-lg font-bold text-gray-900 mb-2">
-          {t('no-price-history') || 'No Price History'}
+          {t('no-price-history' as any) || 'No Price History'}
         </h3>
         <p className="text-gray-600">
-          {t('no-price-history-desc') || 'Price changes will appear here when you update ingredient costs.'}
+          {t('no-price-history-desc' as any) || 'Price changes will appear here when you update ingredient costs.'}
         </p>
       </div>
     );
@@ -91,14 +91,14 @@ export default function IngredientPriceHistory({ ingredientId, ingredientName }:
       <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-6">
         <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
           <DollarSign className="w-6 h-6" />
-          {t('price-insights') || 'Price Insights'} - {ingredientName}
+          {t('price-insights' as any) || 'Price Insights'} - {ingredientName}
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Current Price */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="text-sm text-blue-600 font-medium mb-1">
-              {t('current-price') || 'Current Price'}
+              {t('current-price' as any) || 'Current Price'}
             </div>
             <div className="text-2xl font-bold text-blue-900">
               {formatCurrency(insights.current_price)}
@@ -109,17 +109,17 @@ export default function IngredientPriceHistory({ ingredientId, ingredientName }:
           <div className={`border rounded-lg p-4 ${getTrendColor(insights.price_trend)}`}>
             <div className="text-sm font-medium mb-1 flex items-center gap-2">
               {getTrendIcon(insights.price_trend)}
-              {t('price-trend') || 'Price Trend'}
+              {t('price-trend' as any) || 'Price Trend'}
             </div>
             <div className="text-lg font-bold">
-              {t(insights.price_trend) || insights.price_trend.charAt(0).toUpperCase() + insights.price_trend.slice(1)}
+              {t(insights.price_trend as any) || insights.price_trend.charAt(0).toUpperCase() + insights.price_trend.slice(1)}
             </div>
           </div>
 
           {/* Total Change */}
           <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
             <div className="text-sm text-purple-600 font-medium mb-1">
-              {t('total-change') || 'Total Change'}
+              {t('total-change' as any) || 'Total Change'}
             </div>
             <div className="text-2xl font-bold text-purple-900">
               {formatPercent(insights.total_change_percent)}
@@ -129,7 +129,7 @@ export default function IngredientPriceHistory({ ingredientId, ingredientName }:
           {/* Monthly Average */}
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
             <div className="text-sm text-orange-600 font-medium mb-1">
-              {t('monthly-avg') || 'Monthly Avg'}
+              {t('monthly-avg' as any) || 'Monthly Avg'}
             </div>
             <div className="text-2xl font-bold text-orange-900">
               {formatPercent(insights.average_monthly_change)}
@@ -141,7 +141,7 @@ export default function IngredientPriceHistory({ ingredientId, ingredientName }:
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <div className="text-sm text-red-600 font-medium mb-1">
-              {t('highest-price') || 'Highest Price'}
+              {t('highest-price' as any) || 'Highest Price'}
             </div>
             <div className="text-xl font-bold text-red-900">
               {formatCurrency(insights.highest_price.price)}
@@ -153,7 +153,7 @@ export default function IngredientPriceHistory({ ingredientId, ingredientName }:
 
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
             <div className="text-sm text-green-600 font-medium mb-1">
-              {t('lowest-price') || 'Lowest Price'}
+              {t('lowest-price' as any) || 'Lowest Price'}
             </div>
             <div className="text-xl font-bold text-green-900">
               {formatCurrency(insights.lowest_price.price)}
@@ -169,7 +169,7 @@ export default function IngredientPriceHistory({ ingredientId, ingredientName }:
       <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-6">
         <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
           <Calendar className="w-6 h-6" />
-          {t('price-history') || 'Price History'}
+          {t('price-history' as any) || 'Price History'}
         </h3>
 
         <div className="space-y-4">
@@ -194,15 +194,15 @@ export default function IngredientPriceHistory({ ingredientId, ingredientName }:
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
                     <div>
-                      <span className="text-gray-600">{t('from') || 'From'}:</span>
+                      <span className="text-gray-600">{t('from' as any) || 'From'}:</span>
                       <span className="font-bold ml-1">{formatCurrency(change.old_price)}</span>
                     </div>
                     <div>
-                      <span className="text-gray-600">{t('to') || 'To'}:</span>
+                      <span className="text-gray-600">{t('to' as any) || 'To'}:</span>
                       <span className="font-bold ml-1">{formatCurrency(change.new_price)}</span>
                     </div>
                     <div>
-                      <span className="text-gray-600">{t('change') || 'Change'}:</span>
+                      <span className="text-gray-600">{t('change' as any) || 'Change'}:</span>
                       <span className={`font-bold ml-1 ${change.price_change > 0 ? 'text-red-600' : change.price_change < 0 ? 'text-green-600' : 'text-gray-600'}`}>
                         {formatPercent(change.price_change_percent)}
                       </span>
@@ -211,14 +211,14 @@ export default function IngredientPriceHistory({ ingredientId, ingredientName }:
 
                   {change.change_reason && (
                     <div className="mt-2 text-sm text-gray-600">
-                      <span className="font-medium">{t('reason') || 'Reason'}:</span> {change.change_reason}
+                      <span className="font-medium">{t('reason' as any) || 'Reason'}:</span> {change.change_reason}
                     </div>
                   )}
 
                   {(change.purchase_location || change.supplier_id) && (
                     <div className="mt-1 text-xs text-gray-500">
                       {change.purchase_location && (
-                        <span>{t('location') || 'Location'}: {change.purchase_location}</span>
+                        <span>{t('location' as any) || 'Location'}: {change.purchase_location}</span>
                       )}
                       {change.purchase_location && change.supplier_id && ' • '}
                       {change.supplier_id && (
