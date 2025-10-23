@@ -126,7 +126,7 @@ export default function IngredientsPage() {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-green-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 font-semibold">{t('loading') || 'Loading ingredients...'}}</p>
+          <p className="text-gray-600 font-semibold">{t('loading') || 'Loading ingredients...'}</p>
         </div>
       </div>
     );

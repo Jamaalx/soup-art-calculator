@@ -1,17 +1,59 @@
 import { createClient } from '@/lib/supabase/client';
 import { Recipe, Ingredient, RecipeIngredient } from '@/types';
+import { Database } from '@/lib/supabase/database';
+
+type CategoryRow = Database['public']['Tables']['categories']['Row'];
+type CategoryInsert = Database['public']['Tables']['categories']['Insert'];
+type CategoryUpdate = Database['public']['Tables']['categories']['Update'];
 
 export interface Category {
   id: string;
   name: string;
   type: 'ingredient' | 'recipe' | 'product';
-  description?: string;
   icon?: string;
   color?: string;
   is_active: boolean;
   company_id: string;
   created_at?: string;
   updated_at?: string;
+}
+
+// Helper functions to convert between database rows and Category interface
+function rowToCategory(row: CategoryRow): Category {
+  return {
+    id: row.id,
+    name: row.name,
+    type: row.category_id as 'ingredient' | 'recipe' | 'product',
+    icon: row.icon || undefined,
+    color: row.color || undefined,
+    is_active: row.is_active,
+    company_id: row.company_id || '',
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
+function categoryToInsert(category: Omit<Category, 'id' | 'created_at' | 'updated_at'>): CategoryInsert {
+  return {
+    category_id: category.type,
+    name: category.name,
+    icon: category.icon || null,
+    color: category.color || null,
+    is_active: category.is_active,
+    company_id: category.company_id,
+  };
+}
+
+function categoryToUpdate(updates: Partial<Category>): CategoryUpdate {
+  const result: CategoryUpdate = {};
+  if (updates.type) result.category_id = updates.type;
+  if (updates.name !== undefined) result.name = updates.name;
+  if (updates.icon !== undefined) result.icon = updates.icon || null;
+  if (updates.color !== undefined) result.color = updates.color || null;
+  if (updates.is_active !== undefined) result.is_active = updates.is_active;
+  if (updates.company_id !== undefined) result.company_id = updates.company_id;
+  result.updated_at = new Date().toISOString();
+  return result;
 }
 
 export const categoriesService = {
@@ -26,13 +68,13 @@ export const categoriesService = {
       .order('name');
 
     if (type) {
-      query = query.eq('type', type);
+      query = query.eq('category_id', type);
     }
 
     const { data, error } = await query;
-    
+
     if (error) throw error;
-    return data || [];
+    return (data || []).map(rowToCategory);
   },
 
   // Create new category
@@ -40,12 +82,12 @@ export const categoriesService = {
     const supabase = createClient();
     const { data, error } = await supabase
       .from('categories')
-      .insert(category)
+      .insert(categoryToInsert(category))
       .select()
       .single();
-    
+
     if (error) throw error;
-    return data;
+    return rowToCategory(data);
   },
 
   // Update category
@@ -53,13 +95,13 @@ export const categoriesService = {
     const supabase = createClient();
     const { data, error } = await supabase
       .from('categories')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update(categoryToUpdate(updates))
       .eq('id', id)
       .select()
       .single();
-    
+
     if (error) throw error;
-    return data;
+    return rowToCategory(data);
   },
 
   // Delete category (soft delete)
@@ -98,18 +140,18 @@ export const categoriesService = {
       { name: 'Băuturi', type: 'recipe', icon: '☕', color: '#6366F1' }
     ];
 
-    const categoriesToInsert = [
+    const categoriesToInsert: CategoryInsert[] = [
       ...defaultIngredientCategories.map(cat => ({
+        category_id: cat.type,
         name: cat.name,
-        type: cat.type as 'ingredient',
         icon: cat.icon,
         color: cat.color,
         is_active: true,
         company_id: companyId
       })),
       ...defaultRecipeCategories.map(cat => ({
+        category_id: cat.type,
         name: cat.name,
-        type: cat.type as 'recipe',
         icon: cat.icon,
         color: cat.color,
         is_active: true,
@@ -120,7 +162,7 @@ export const categoriesService = {
     const { error } = await supabase
       .from('categories')
       .insert(categoriesToInsert);
-    
+
     if (error) throw error;
   }
 };
