@@ -80,9 +80,10 @@ export default function RecipeForm({ recipe, onSave, onCancel, loading = false }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const recipeData: Omit<Recipe, 'id' | 'created_at' | 'updated_at'> = {
       ...formData,
+      serving_size: formData.servings, // Map servings to serving_size
       ingredients: recipeIngredients,
       total_cost: totalCost,
       cost_per_serving: costPerServing,
