@@ -127,6 +127,26 @@ export const translations = {
     'total-cost': 'Total Cost',
     'food-cost-percentage': 'Food Cost %',
 
+    // Ingredient Price History
+    'no-price-history': 'No Price History',
+    'no-price-history-desc': 'Price changes will appear here once you update ingredient costs',
+    'price-insights': 'Price Insights',
+    'current-price': 'Current Price',
+    'price-trend': 'Price Trend',
+    'increasing': 'Increasing',
+    'decreasing': 'Decreasing',
+    'stable': 'Stable',
+    'total-change': 'Total Change',
+    'monthly-avg': 'Monthly Average',
+    'highest-price': 'Highest Price',
+    'lowest-price': 'Lowest Price',
+    'price-history': 'Price History',
+    'from': 'From',
+    'to': 'To',
+    'change': 'Change',
+    'reason': 'Reason',
+    'location': 'Location',
+
     // Pricing Module
     'price-calculator': 'Price Calculator',
     'recommended-price-calculator': 'Recommended Price Calculator',
@@ -327,6 +347,26 @@ export const translations = {
     'cost-per-unit': 'Cost pe Unitate',
     'total-cost': 'Cost Total',
     'food-cost-percentage': 'Procent Cost Alimentar',
+
+    // Ingredient Price History
+    'no-price-history': 'Fără Istoric Prețuri',
+    'no-price-history-desc': 'Modificările de prețuri vor apărea aici odată ce actualizezi costurile ingredientelor',
+    'price-insights': 'Analize Prețuri',
+    'current-price': 'Preț Curent',
+    'price-trend': 'Tendință Prețuri',
+    'increasing': 'Crescător',
+    'decreasing': 'Descrescător',
+    'stable': 'Stabil',
+    'total-change': 'Schimbare Totală',
+    'monthly-avg': 'Medie Lunară',
+    'highest-price': 'Preț Maxim',
+    'lowest-price': 'Preț Minim',
+    'price-history': 'Istoric Prețuri',
+    'from': 'De la',
+    'to': 'Până la',
+    'change': 'Schimbare',
+    'reason': 'Motiv',
+    'location': 'Locație',
 
     // Pricing Module
     'price-calculator': 'Calculator Prețuri',
