@@ -43,9 +43,6 @@ export default function IngredientsPage() {
     return matchesSearch && matchesCategory;
   });
 
-  // Get unique categories
-  const categories = Array.from(new Set(ingredients.map(ing => ing.category))).filter(Boolean);
-
   const resetForm = () => {
     setFormData({
       name: '',
