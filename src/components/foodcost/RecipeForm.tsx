@@ -9,14 +9,15 @@ import PriceCalculator from './PriceCalculator';
 
 interface RecipeFormProps {
   recipe?: Recipe;
+  companyId: string;
   onSave: (recipe: Omit<Recipe, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
   onCancel: () => void;
   loading?: boolean;
 }
 
-export default function RecipeForm({ recipe, onSave, onCancel, loading = false }: RecipeFormProps) {
+export default function RecipeForm({ recipe, companyId, onSave, onCancel, loading = false }: RecipeFormProps) {
   const { ingredients } = useIngredients();
-  const { categories, loading: categoriesLoading } = useCategories('default-company', 'recipe');
+  const { categories, loading: categoriesLoading } = useCategories(companyId, 'recipe');
   const [formData, setFormData] = useState({
     name: recipe?.name || '',
     description: recipe?.description || '',

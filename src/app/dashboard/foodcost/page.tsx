@@ -2,24 +2,30 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  ChefHat, 
-  TrendingUp, 
-  DollarSign, 
+import {
+  Plus,
+  Search,
+  Filter,
+  ChefHat,
+  TrendingUp,
+  DollarSign,
   Package,
   BarChart3,
   Clock,
   Target
 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserProfile } from '@/lib/hooks/useUserSettings';
 import { useRecipes, useRecipeInsights } from '@/lib/hooks/useRecipes';
 import { Recipe } from '@/types';
 import RecipeCard from '@/components/foodcost/RecipeCard';
 import RecipeForm from '@/components/foodcost/RecipeForm';
 
 export default function FoodCostPage() {
+  const { user } = useAuth();
+  const { profile, loading: profileLoading } = useUserProfile(user?.id);
+  const companyId = profile?.company_id || '';
+
   const { recipes, loading, error, createRecipe, updateRecipe, deleteRecipe } = useRecipes();
   const { insights } = useRecipeInsights();
   
@@ -79,6 +85,7 @@ export default function FoodCostPage() {
     return (
       <RecipeForm
         recipe={editingRecipe || undefined}
+        companyId={companyId}
         onSave={editingRecipe ? handleUpdateRecipe : handleCreateRecipe}
         onCancel={() => {
           setShowForm(false);

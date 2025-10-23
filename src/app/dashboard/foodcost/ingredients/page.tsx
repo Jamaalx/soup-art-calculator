@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { Package, Plus, Search, Edit, Trash2, Store, ShoppingCart, Building2, TrendingUp, History, X } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserProfile } from '@/lib/hooks/useUserSettings';
 import { useIngredients } from '@/lib/hooks/useIngredients';
 import { useCategories } from '@/lib/hooks/useCategories';
 import { useUnits } from '@/lib/hooks/useUnits';
@@ -11,7 +13,10 @@ import IngredientPriceHistory from '@/components/foodcost/IngredientPriceHistory
 
 export default function IngredientsPage() {
   const { t } = useLanguage();
-  const companyId = 'default-company'; // This should come from user context
+  const { user } = useAuth();
+  const { profile, loading: profileLoading } = useUserProfile(user?.id);
+  const companyId = profile?.company_id || '';
+
   const { ingredients, loading, error, createIngredient, updateIngredient, deleteIngredient } = useIngredients(companyId);
   const { categories, loading: categoriesLoading } = useCategories(companyId, 'ingredient');
   const { units, loading: unitsLoading } = useUnits(companyId);
@@ -118,13 +123,21 @@ export default function IngredientsPage() {
     }
   };
 
-  if (loading) {
+  if (profileLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-green-600 mx-auto mb-4"></div>
           <p className="text-gray-600 font-semibold">{t('loading') || 'Loading ingredients...'}</p>
         </div>
+      </div>
+    );
+  }
+
+  if (!companyId) {
+    return (
+      <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-center">
+        <p className="text-yellow-700 font-semibold">{t('no-company') || 'No company found. Please set up your company profile.'}</p>
       </div>
     );
   }

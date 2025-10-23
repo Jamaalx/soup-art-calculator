@@ -60,12 +60,20 @@ export const categoriesService = {
   // Get categories by type and company
   async getCategories(companyId: string, type?: 'ingredient' | 'recipe' | 'product'): Promise<Category[]> {
     const supabase = createClient();
+
+    // Build query to include both company-specific and system-wide (null company_id) categories
     let query = supabase
       .from('categories')
       .select('*')
-      .eq('company_id', companyId)
       .eq('is_active', true)
       .order('name');
+
+    // Filter by company_id OR null (system-wide categories)
+    if (companyId) {
+      query = query.or(`company_id.eq.${companyId},company_id.is.null`);
+    } else {
+      query = query.is('company_id', null);
+    }
 
     if (type) {
       query = query.eq('category_id', type);
