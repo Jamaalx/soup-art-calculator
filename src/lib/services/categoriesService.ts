@@ -1,4 +1,5 @@
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase/client';
+import { Recipe, Ingredient, RecipeIngredient } from '@/types';
 
 export interface Category {
   id: string;
@@ -16,6 +17,7 @@ export interface Category {
 export const categoriesService = {
   // Get categories by type and company
   async getCategories(companyId: string, type?: 'ingredient' | 'recipe' | 'product'): Promise<Category[]> {
+    const supabase = createClient();
     let query = supabase
       .from('categories')
       .select('*')
@@ -35,6 +37,7 @@ export const categoriesService = {
 
   // Create new category
   async createCategory(category: Omit<Category, 'id' | 'created_at' | 'updated_at'>): Promise<Category> {
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('categories')
       .insert(category)
@@ -47,6 +50,7 @@ export const categoriesService = {
 
   // Update category
   async updateCategory(id: string, updates: Partial<Category>): Promise<Category> {
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('categories')
       .update({ ...updates, updated_at: new Date().toISOString() })
@@ -60,6 +64,7 @@ export const categoriesService = {
 
   // Delete category (soft delete)
   async deleteCategory(id: string): Promise<void> {
+    const supabase = createClient();
     const { error } = await supabase
       .from('categories')
       .update({ is_active: false, updated_at: new Date().toISOString() })
@@ -70,6 +75,7 @@ export const categoriesService = {
 
   // Initialize default categories for a company
   async initializeDefaultCategories(companyId: string): Promise<void> {
+    const supabase = createClient();
     const defaultIngredientCategories = [
       { name: 'Meat', type: 'ingredient', icon: '🥩', color: '#DC2626' },
       { name: 'Vegetables', type: 'ingredient', icon: '🥕', color: '#16A34A' },

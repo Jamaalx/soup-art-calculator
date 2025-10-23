@@ -1,16 +1,17 @@
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase/client';
+const supabase = createClient();
 
 export interface Unit {
-  id: string;
-  name: string;
-  abbreviation: string;
-  type: 'weight' | 'volume' | 'count' | 'length' | 'other';
-  base_unit?: string; // For conversion purposes
-  conversion_factor?: number; // How many base units this represents
-  is_active: boolean;
-  company_id?: string; // null for system-wide units
-  created_at?: string;
-  updated_at?: string;
+  id: string | null;
+  name: string | null;
+  abbreviation: string | null;
+  type: 'weight' | 'volume' | 'count' | 'length' | 'other' | null;
+  base_unit?: string | null; // For conversion purposes
+  conversion_factor?: number | null; // How many base units this represents
+  is_active: boolean | null;
+  company_id?: string | null; // null for system-wide units
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export const unitsService = {

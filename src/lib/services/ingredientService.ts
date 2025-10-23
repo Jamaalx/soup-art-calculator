@@ -1,6 +1,7 @@
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase/client';
 import { Ingredient, IngredientPriceHistory, IngredientPriceInsights } from '@/types';
 
+const supabase = createClient();
 export const ingredientService = {
   // Get all ingredients for a company
   async getIngredients(companyId: string): Promise<Ingredient[]> {
