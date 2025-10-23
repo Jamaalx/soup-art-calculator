@@ -208,6 +208,10 @@ CREATE TRIGGER update_user_profiles_updated_at BEFORE UPDATE ON user_profiles
 -- 10. RPC FUNCTIONS FOR CALCULATOR SETTINGS
 -- ============================================================================
 
+-- Drop existing functions if they exist (to avoid type conflicts)
+DROP FUNCTION IF EXISTS get_all_company_settings();
+DROP FUNCTION IF EXISTS get_company_setting(VARCHAR, VARCHAR);
+
 -- Get all company settings (merges default + company-specific)
 CREATE OR REPLACE FUNCTION get_all_company_settings()
 RETURNS TABLE (
