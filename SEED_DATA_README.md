@@ -104,24 +104,48 @@ The `seed_data.sql` file contains initial/default data that should be loaded int
 
 ## How to Use
 
-### Running the Seed Data
+### Running the Seed Data (CORRECT ORDER - IMPORTANT!)
 
-1. **Ensure your database schema is up to date:**
-   ```bash
-   # Run the main setup SQL first if not already done
-   # (in Supabase Dashboard SQL Editor or via CLI)
-   ```
+You must run the SQL files in this specific order:
 
-2. **Run the seed data SQL:**
-   ```bash
-   # In Supabase Dashboard:
-   # 1. Go to SQL Editor
-   # 2. Copy and paste the contents of seed_data.sql
-   # 3. Click "Run"
+#### Step 1: Run the main schema setup
+```bash
+# In Supabase Dashboard SQL Editor:
+# 1. Open supabase_setup.sql
+# 2. Copy and paste the entire contents
+# 3. Click "Run"
+```
 
-   # OR via Supabase CLI:
-   supabase db execute -f seed_data.sql
-   ```
+#### Step 2: Run the missing tables schema
+```bash
+# In Supabase Dashboard SQL Editor:
+# 1. Open schema_update_missing_tables.sql
+# 2. Copy and paste the entire contents
+# 3. Click "Run"
+
+# This creates:
+# - units table
+# - categories table
+# - calculator_settings table
+# - ingredient_price_history table
+# - user_settings table
+# - user_profiles table
+```
+
+#### Step 3: Run the seed data
+```bash
+# In Supabase Dashboard SQL Editor:
+# 1. Open seed_data.sql
+# 2. Copy and paste the entire contents
+# 3. Click "Run"
+
+# OR via Supabase CLI:
+supabase db execute -f supabase_setup.sql
+supabase db execute -f schema_update_missing_tables.sql
+supabase db execute -f seed_data.sql
+```
+
+**Note:** If you get any errors about tables already existing, that's fine - the scripts use `CREATE TABLE IF NOT EXISTS` and `ON CONFLICT DO NOTHING` to prevent duplicates.
 
 ### For New Companies
 
