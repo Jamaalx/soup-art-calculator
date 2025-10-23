@@ -78,11 +78,11 @@ export default function RecipeCard({ recipe, onEdit, onDelete, onLink }: RecipeC
         <div className="space-y-3 mb-4">
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-600">Total Cost:</span>
-            <span className="font-bold text-gray-900">{recipe.total_cost.toFixed(2)} LEI</span>
+            <span className="font-bold text-gray-900">{(recipe.total_cost ?? 0).toFixed(2)} LEI</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-600">Cost per Serving:</span>
-            <span className="font-bold text-gray-900">{recipe.cost_per_serving.toFixed(2)} LEI</span>
+            <span className="font-bold text-gray-900">{(recipe.cost_per_serving ?? 0).toFixed(2)} LEI</span>
           </div>
           {recipe.selling_price && (
             <div className="flex justify-between items-center">
@@ -123,17 +123,17 @@ export default function RecipeCard({ recipe, onEdit, onDelete, onLink }: RecipeC
         <div className="mb-4 p-3 bg-gray-50 rounded-lg">
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-600">Ingredients:</span>
-            <span className="font-bold text-gray-900">{recipe.ingredients.length} items</span>
+            <span className="font-bold text-gray-900">{recipe.ingredients?.length ?? 0} items</span>
           </div>
         </div>
 
         {/* Key Ingredients Preview */}
-        {recipe.ingredients.length > 0 && (
+        {recipe.ingredients && recipe.ingredients.length > 0 && (
           <div className="mb-4">
             <p className="text-xs text-gray-500 mb-2">Key Ingredients:</p>
             <div className="flex flex-wrap gap-1">
               {recipe.ingredients.slice(0, 3).map((ingredient, index) => (
-                <span 
+                <span
                   key={index}
                   className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium"
                 >
