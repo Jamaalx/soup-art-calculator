@@ -399,13 +399,13 @@ export const competitorService = {
         *,
         competitors!inner(name)
       `)
-      .ilike('product_name', `%${productName}%`)
-      .order('last_updated', { ascending: false });
+      .ilike('name', `%${productName}%`)
+      .order('updated_at', { ascending: false });
 
     return competitorProducts?.map(cp => ({
       competitor_name: cp.competitors.name,
       price_history: [{
-        date: cp.last_updated,
+        date: cp.updated_at,
         price: cp.price
       }]
     })) || [];

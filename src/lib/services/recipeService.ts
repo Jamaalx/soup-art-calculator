@@ -15,10 +15,12 @@ export const recipeService = {
       .eq('id', user.user.id)
       .single();
 
+    if (!profile?.company_id) throw new Error('No company_id found');
+
     const { data, error } = await supabase
       .from('recipes')
       .select('*')
-      .eq('company_id', profile?.company_id)
+      .eq('company_id', profile.company_id)
       .eq('is_active', true)
       .order('created_at', { ascending: false });
 
@@ -49,21 +51,31 @@ export const recipeService = {
       .eq('id', user.user.id)
       .single();
 
+    if (!profile?.company_id) throw new Error('No company_id found');
+
     // Calculate costs
-    const totalCost = recipe.ingredients.reduce((sum, ing) => sum + ing.cost, 0);
-    const costPerServing = totalCost / recipe.servings;
-    const profitMargin = recipe.selling_price 
+    const ingredients = recipe.ingredients || [];
+    const servings = recipe.servings || recipe.serving_size || 1;
+    const totalCost = ingredients.reduce((sum, ing) => sum + ing.cost, 0);
+    const costPerServing = totalCost / servings;
+    const profitMargin = recipe.selling_price
       ? ((recipe.selling_price - costPerServing) / recipe.selling_price) * 100
       : 0;
 
     const { data, error } = await supabase
       .from('recipes')
       .insert({
-        ...recipe,
-        company_id: profile?.company_id,
-        total_cost: totalCost,
-        cost_per_serving: costPerServing,
-        profit_margin: profitMargin
+        name: recipe.name,
+        description: recipe.description || null,
+        category: recipe.category || null,
+        company_id: profile.company_id,
+        serving_size: recipe.serving_size,
+        prep_time_minutes: recipe.prep_time_minutes || null,
+        cook_time_minutes: recipe.cook_time_minutes || null,
+        difficulty_level: recipe.difficulty_level || 'medium',
+        instructions: recipe.instructions || null,
+        notes: recipe.notes || null,
+        is_active: recipe.is_active
       })
       .select()
       .single();
@@ -117,20 +129,17 @@ export const recipeService = {
 
   // Link recipe to product
   async linkToProduct(recipeId: string, productId: string): Promise<void> {
-    const { error } = await supabase
-      .from('recipes')
-      .update({ product_id: productId })
-      .eq('id', recipeId);
-
-    if (error) throw error;
-
-    // Update product cost based on recipe
+    // Note: product_id doesn't exist in recipes table schema
+    // This would need to be stored in a separate linking table
+    // For now, we'll just update the product cost
     const recipe = await this.getRecipe(recipeId);
-    if (recipe) {
-      await supabase
+    if (recipe && recipe.cost_per_serving) {
+      const { error } = await supabase
         .from('products')
         .update({ pret_cost: recipe.cost_per_serving })
         .eq('id', productId);
+
+      if (error) throw error;
     }
   },
 
@@ -145,10 +154,12 @@ export const recipeService = {
       .eq('id', user.user.id)
       .single();
 
+    if (!profile?.company_id) throw new Error('No company_id found');
+
     const { data, error } = await supabase
       .from('ingredients')
       .select('*')
-      .eq('company_id', profile?.company_id)
+      .eq('company_id', profile.company_id)
       .eq('is_active', true)
       .order('name');
 
@@ -167,11 +178,13 @@ export const recipeService = {
       .eq('id', user.user.id)
       .single();
 
+    if (!profile?.company_id) throw new Error('No company_id found');
+
     const { data, error } = await supabase
       .from('ingredients')
       .insert({
         ...ingredient,
-        company_id: profile?.company_id
+        company_id: profile.company_id
       })
       .select()
       .single();
@@ -209,9 +222,10 @@ export const recipeService = {
     profitMargin: number;
     markupPercent: number;
   } {
-    const profit = sellingPrice - recipe.cost_per_serving;
+    const costPerServing = recipe.cost_per_serving ?? 0;
+    const profit = sellingPrice - costPerServing;
     const profitMargin = (profit / sellingPrice) * 100;
-    const markupPercent = (profit / recipe.cost_per_serving) * 100;
+    const markupPercent = costPerServing > 0 ? (profit / costPerServing) * 100 : 0;
 
     return {
       profit,
@@ -228,10 +242,10 @@ export const recipeService = {
     leastProfitable: Recipe | null;
   }> {
     const recipes = await this.getRecipes();
-    
+
     const totalRecipes = recipes.length;
-    const averageFoodCost = recipes.reduce((sum, r) => sum + r.cost_per_serving, 0) / totalRecipes || 0;
-    
+    const averageFoodCost = recipes.reduce((sum, r) => sum + (r.cost_per_serving ?? 0), 0) / totalRecipes || 0;
+
     const withProfit = recipes.filter(r => r.selling_price && r.profit_margin);
     const mostProfitable = withProfit.sort((a, b) => (b.profit_margin || 0) - (a.profit_margin || 0))[0] || null;
     const leastProfitable = withProfit.sort((a, b) => (a.profit_margin || 0) - (b.profit_margin || 0))[0] || null;

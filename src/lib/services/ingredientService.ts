@@ -60,8 +60,8 @@ export const ingredientService = {
         updates.cost_per_unit,
         currentIngredient.company_id,
         priceChangeReason,
-        updates.supplier_id,
-        updates.purchase_location
+        updates.supplier_id ?? undefined,
+        updates.purchase_location ?? undefined
       );
     }
 
