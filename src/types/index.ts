@@ -190,10 +190,13 @@ export interface Recipe {
 export interface Competitor {
   id: string;
   name: string;
-  website?: string;
-  location?: string;
-  type: 'restaurant' | 'delivery' | 'both';
-  price_range: 'budget' | 'medium' | 'premium';
+  website?: string | null;
+  location?: string | null;
+  category?: string | null; // Database field (maps to type)
+  type?: 'restaurant' | 'delivery' | 'both'; // Legacy/display field
+  price_range?: string | null; // Can be 'budget' | 'medium' | 'premium'
+  phone?: string | null;
+  notes?: string | null;
   is_active: boolean;
   company_id: string;
   created_at?: string;
@@ -203,11 +206,17 @@ export interface Competitor {
 export interface CompetitorProduct {
   id: string;
   competitor_id: string;
-  product_name: string;
-  category: string;
+  name: string; // Database field name
+  product_name?: string; // Legacy/display field (maps to name)
+  category?: string | null;
   price: number;
-  description?: string;
-  last_updated: string;
+  description?: string | null;
+  notes?: string | null;
+  source?: string | null;
+  date_recorded?: string | null;
+  updated_at?: string; // Database field
+  last_updated?: string; // Legacy/display field (maps to updated_at)
+  is_active?: boolean;
   our_equivalent_product_id?: string;
 }
 
