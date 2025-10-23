@@ -109,7 +109,7 @@ export interface CategoryAnalytics {
 export interface Ingredient {
   id: string;
   name: string;
-  unit: 'kg' | 'l' | 'piece' | 'g' | 'ml';
+  unit: string; // Can be any unit from the units table
   cost_per_unit: number;
   supplier_id?: string;
   category: string;
@@ -129,11 +129,12 @@ export interface IngredientPriceHistory {
   new_price: number;
   price_change: number;
   price_change_percent: number;
-  change_reason?: string;
-  supplier_id?: string;
-  purchase_location?: string;
+  change_reason?: string | null;
+  supplier_id?: string | null;
+  purchase_location?: string | null;
   recorded_at: string;
   company_id: string;
+  created_at?: string;
 }
 
 export interface IngredientPriceInsights {
@@ -155,25 +156,34 @@ export interface RecipeIngredient {
   quantity: number;
   unit: string;
   cost: number;
+  notes?: string;
 }
 
 export interface Recipe {
   id: string;
   name: string;
-  description?: string;
-  category: string;
-  ingredients: RecipeIngredient[];
-  preparation_time: number; // minutes
-  servings: number;
-  total_cost: number;
-  cost_per_serving: number;
-  selling_price?: number;
-  profit_margin?: number;
+  description?: string | null;
+  category?: string | null;
+  ingredients?: RecipeIngredient[]; // Joined from recipe_ingredients table
+  prep_time_minutes?: number | null;
+  cook_time_minutes?: number | null;
+  serving_size: number;
+  difficulty_level?: string;
+  instructions?: string | null;
+  notes?: string | null;
+  total_cost?: number; // Calculated field
+  cost_per_serving?: number; // Calculated field
+  selling_price?: number; // Calculated field
+  profit_margin?: number; // Calculated field
   is_active: boolean;
   company_id: string;
-  product_id?: string; // Link to product
+  product_id?: string | null; // Link to product (if exists in extended schema)
   created_at?: string;
   updated_at?: string;
+
+  // Legacy compatibility fields (map to database fields)
+  preparation_time?: number; // maps to prep_time_minutes
+  servings?: number; // maps to serving_size
 }
 
 // Competitor Analysis Types

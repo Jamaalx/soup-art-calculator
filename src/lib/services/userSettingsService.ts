@@ -5,30 +5,45 @@ const supabase = createClient();
 export interface UserSettings {
   id: string;
   user_id: string;
+  company_id?: string | null;
   language: string;
   currency: string;
   date_format: string;
-  time_zone: string;
+  time_format: string;
+  timezone: string; // Renamed from time_zone to match database
+  number_format: string;
+  theme: string;
   email_notifications: boolean;
-  cost_alerts: boolean;
-  weekly_reports: boolean;
-  order_reminders: boolean;
-  two_factor_enabled: boolean;
+  sms_notifications: boolean;
   created_at?: string;
   updated_at?: string;
+
+  // Legacy compatibility fields (can be removed if not used)
+  time_zone?: string; // Maps to timezone
+  cost_alerts?: boolean; // Can be stored in preferences JSON
+  weekly_reports?: boolean; // Can be stored in preferences JSON
+  order_reminders?: boolean; // Can be stored in preferences JSON
+  two_factor_enabled?: boolean; // Can be stored in preferences JSON
 }
 
 export interface UserProfile {
   id: string;
   user_id: string;
-  first_name?: string;
-  last_name?: string;
+  company_id?: string | null;
   email: string;
-  phone?: string;
-  restaurant_name?: string;
-  avatar_url?: string;
+  full_name?: string | null;
+  phone?: string | null;
+  avatar_url?: string | null;
+  role: string;
+  is_active: boolean;
+  preferences?: any | null; // JSON field for additional data
   created_at?: string;
   updated_at?: string;
+
+  // Legacy compatibility fields (can be computed from full_name)
+  first_name?: string;
+  last_name?: string;
+  restaurant_name?: string; // Can be stored in preferences
 }
 
 export const userSettingsService = {
@@ -48,18 +63,19 @@ export const userSettingsService = {
   },
 
   // Create default settings for new user
-  async createDefaultSettings(userId: string): Promise<UserSettings> {
-    const defaultSettings: Omit<UserSettings, 'id' | 'created_at' | 'updated_at'> = {
+  async createDefaultSettings(userId: string, companyId?: string): Promise<UserSettings> {
+    const defaultSettings = {
       user_id: userId,
+      company_id: companyId || null,
       language: 'en',
       currency: 'RON',
       date_format: 'DD/MM/YYYY',
-      time_zone: 'Europe/Bucharest',
+      time_format: '24h',
+      timezone: 'Europe/Bucharest',
+      number_format: '1,234.56',
+      theme: 'light',
       email_notifications: true,
-      cost_alerts: true,
-      weekly_reports: false,
-      order_reminders: true,
-      two_factor_enabled: false
+      sms_notifications: false
     };
 
     const { data, error } = await supabase
@@ -67,7 +83,7 @@ export const userSettingsService = {
       .insert(defaultSettings)
       .select()
       .single();
-    
+
     if (error) throw error;
     return data;
   },
