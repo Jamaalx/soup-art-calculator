@@ -111,11 +111,11 @@ export interface Ingredient {
   name: string;
   unit: string; // Can be any unit from the units table
   cost_per_unit: number;
-  supplier_id?: string;
+  supplier_id?: string | null;
   category: string;
-  brand?: string;
-  purchase_location?: string;
-  notes?: string;
+  brand?: string | null;
+  purchase_location?: string | null;
+  notes?: string | null;
   is_active: boolean;
   company_id: string;
   created_at?: string;
