@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { Recipe, RecipeIngredient, Ingredient } from '@/types';
-import { useIngredients } from '@/lib/hooks/useRecipes';
+import { useIngredients } from '@/lib/hooks/useIngredients';
 import { useCategories } from '@/lib/hooks/useCategories';
 import { Plus, Minus, Search, Calculator, Clock, Users, DollarSign } from 'lucide-react';
 import PriceCalculator from './PriceCalculator';
+import { createClient } from '@/lib/supabase/client';
 
 interface RecipeFormProps {
   recipe?: Recipe;
@@ -15,8 +16,31 @@ interface RecipeFormProps {
 }
 
 export default function RecipeForm({ recipe, onSave, onCancel, loading = false }: RecipeFormProps) {
-  const { ingredients } = useIngredients();
-  const { categories, loading: categoriesLoading } = useCategories('default-company', 'recipe');
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const supabase = createClient();
+
+  // Fetch company ID from user profile
+  useEffect(() => {
+    async function fetchCompanyId() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.company_id) {
+        setCompanyId(profile.company_id);
+      }
+    }
+
+    fetchCompanyId();
+  }, []);
+
+  const { ingredients } = useIngredients(companyId || '');
+  const { categories, loading: categoriesLoading } = useCategories(companyId || '', 'recipe');
   const [formData, setFormData] = useState({
     name: recipe?.name || '',
     description: recipe?.description || '',
@@ -133,15 +157,26 @@ export default function RecipeForm({ recipe, onSave, onCancel, loading = false }
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none transition"
-                disabled={categoriesLoading}
+                disabled={categoriesLoading || !companyId}
               >
-                <option value="">{categoriesLoading ? 'Loading categories...' : 'Select Category'}</option>
+                <option value="">
+                  {categoriesLoading ? 'Loading categories...' :
+                   !companyId ? 'Loading...' :
+                   categories.length === 0 ? 'No categories available' :
+                   'Select Category'}
+                </option>
                 {categories.map(category => (
                   <option key={category.id} value={category.name}>
                     {category.icon ? `${category.icon} ` : ''}{category.name}
                   </option>
                 ))}
               </select>
+
+              {categories.length === 0 && companyId && !categoriesLoading && (
+                <p className="mt-1 text-sm text-yellow-600">
+                  No categories found. Please contact admin to add recipe categories.
+                </p>
+              )}
             </div>
 
             {/* Description */}

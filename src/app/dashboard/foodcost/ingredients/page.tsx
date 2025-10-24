@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Package, Plus, Search, Edit, Trash2, Store, ShoppingCart, Building2, TrendingUp, History, X } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useIngredients } from '@/lib/hooks/useIngredients';
@@ -8,13 +8,36 @@ import { useCategories } from '@/lib/hooks/useCategories';
 import { useUnits } from '@/lib/hooks/useUnits';
 import { Ingredient } from '@/types';
 import IngredientPriceHistory from '@/components/foodcost/IngredientPriceHistory';
+import { createClient } from '@/lib/supabase/client';
 
 export default function IngredientsPage() {
   const { t } = useLanguage();
-  const companyId = 'default-company'; // This should come from user context
-  const { ingredients, loading, error, createIngredient, updateIngredient, deleteIngredient } = useIngredients(companyId);
-  const { categories, loading: categoriesLoading } = useCategories(companyId, 'ingredient');
-  const { units, loading: unitsLoading } = useUnits(companyId);
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const supabase = createClient();
+
+  // Fetch company ID from user profile
+  useEffect(() => {
+    async function fetchCompanyId() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.company_id) {
+        setCompanyId(profile.company_id);
+      }
+    }
+
+    fetchCompanyId();
+  }, []);
+
+  const { ingredients, loading, error, createIngredient, updateIngredient, deleteIngredient } = useIngredients(companyId || '');
+  const { categories: ingredientCategories, loading: categoriesLoading } = useCategories(companyId || '', 'ingredient');
+  const { units, loading: unitsLoading } = useUnits(companyId || '');
   
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
@@ -43,8 +66,8 @@ export default function IngredientsPage() {
     return matchesSearch && matchesCategory;
   });
 
-  // Get unique categories
-  const categories = Array.from(new Set(ingredients.map(ing => ing.category))).filter(Boolean);
+  // Get unique categories from ingredients for the filter dropdown
+  const uniqueIngredientCategories = Array.from(new Set(ingredients.map(ing => ing.category))).filter(Boolean);
 
   const resetForm = () => {
     setFormData({
@@ -121,12 +144,23 @@ export default function IngredientsPage() {
     }
   };
 
+  if (!companyId) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-green-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 font-semibold">{t('loading') || 'Loading user profile...'}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-green-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 font-semibold">{t('loading') || 'Loading ingredients...'}}</p>
+          <p className="text-gray-600 font-semibold">{t('loading') || 'Loading ingredients...'}</p>
         </div>
       </div>
     );
@@ -222,7 +256,7 @@ export default function IngredientsPage() {
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             >
               <option value="all">{t('all-categories') || 'All Categories'}</option>
-              {categories.map(category => (
+              {uniqueIngredientCategories.map(category => (
                 <option key={category} value={category}>
                   {category.charAt(0).toUpperCase() + category.slice(1)}
                 </option>
@@ -432,15 +466,15 @@ export default function IngredientsPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       {t('category') || 'Category'} *
                     </label>
-                    <select 
+                    <select
                       required
                       value={formData.category}
                       onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                       disabled={categoriesLoading}
                     >
-                      <option value="">{t('select-category') || 'Select Category'}</option>
-                      {categories.map(category => (
+                      <option value="">{categoriesLoading ? (t('loading') || 'Loading...') : (t('select-category') || 'Select Category')}</option>
+                      {ingredientCategories.map(category => (
                         <option key={category.id} value={category.name}>
                           {category.icon ? `${category.icon} ` : ''}{category.name}
                         </option>
@@ -448,6 +482,9 @@ export default function IngredientsPage() {
                     </select>
                     {categoriesLoading && (
                       <div className="text-xs text-gray-500 mt-1">{t('loading-categories') || 'Loading categories...'}</div>
+                    )}
+                    {!categoriesLoading && ingredientCategories.length === 0 && (
+                      <div className="text-xs text-yellow-600 mt-1">{t('no-categories') || 'No categories available. Please contact admin.'}</div>
                     )}
                   </div>
 
