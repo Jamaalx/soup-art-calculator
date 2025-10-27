@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { Recipe, RecipeIngredient, Ingredient } from '@/types';
-import { useIngredients } from '@/lib/hooks/useRecipes';
+import { useIngredients } from '@/lib/hooks/useIngredients';
 import { useCategories } from '@/lib/hooks/useCategories';
 import { Plus, Minus, Search, Calculator, Clock, Users, DollarSign } from 'lucide-react';
 import PriceCalculator from './PriceCalculator';
+import { createClient } from '@/lib/supabase/client';
 
 interface RecipeFormProps {
   recipe?: Recipe;
@@ -15,9 +16,9 @@ interface RecipeFormProps {
   loading?: boolean;
 }
 
-export default function RecipeForm({ recipe, companyId, onSave, onCancel, loading = false }: RecipeFormProps) {
+export default function RecipeForm({ recipe, onSave, onCancel, loading = false }: RecipeFormProps) {
   const { ingredients } = useIngredients();
-  const { categories, loading: categoriesLoading } = useCategories(companyId, 'recipe');
+  const { categories, loading: categoriesLoading } = useCategories('default-company', 'recipe');
   const [formData, setFormData] = useState({
     name: recipe?.name || '',
     description: recipe?.description || '',
@@ -135,15 +136,26 @@ export default function RecipeForm({ recipe, companyId, onSave, onCancel, loadin
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none transition"
-                disabled={categoriesLoading}
+                disabled={categoriesLoading || !companyId}
               >
-                <option value="">{categoriesLoading ? 'Loading categories...' : 'Select Category'}</option>
+                <option value="">
+                  {categoriesLoading ? 'Loading categories...' :
+                   !companyId ? 'Loading...' :
+                   categories.length === 0 ? 'No categories available' :
+                   'Select Category'}
+                </option>
                 {categories.map(category => (
                   <option key={category.id} value={category.name}>
                     {category.icon ? `${category.icon} ` : ''}{category.name}
                   </option>
                 ))}
               </select>
+
+              {categories.length === 0 && companyId && !categoriesLoading && (
+                <p className="mt-1 text-sm text-yellow-600">
+                  No categories found. Please contact admin to add recipe categories.
+                </p>
+              )}
             </div>
 
             {/* Description */}
