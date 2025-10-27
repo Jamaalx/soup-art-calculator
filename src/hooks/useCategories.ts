@@ -36,7 +36,7 @@ export function useCategories(): UseCategoriesReturn {
 
       // Get current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
+
       if (userError || !user) {
         console.log('No user found, showing empty category list');
         setCategories([]);
@@ -46,12 +46,41 @@ export function useCategories(): UseCategoriesReturn {
 
       console.log('Fetching categories for user:', user.id);
 
-      // Fetch categories from database
-      const { data: dbCategories, error: dbError } = await supabase
+      // Try to get user's profile and company_id
+      const { data: profileData, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('company_id, role')
+        .eq('user_id', user.id)
+        .single();
+
+      console.log('User profile data:', profileData);
+      console.log('Profile error:', profileError);
+
+      const companyId = profileData?.company_id;
+      const userRole = profileData?.role;
+
+      // Build query
+      let query = supabase
         .from('categories')
         .select('*')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
+        .eq('is_active', true);
+
+      // Apply filtering based on user context
+      // If user is admin, show all categories
+      // Otherwise filter by company_id or user_id
+      if (userRole !== 'admin' && userRole !== 'super_admin') {
+        if (companyId) {
+          // User belongs to a company - show company categories
+          query = query.eq('company_id', companyId);
+        } else {
+          // User doesn't have company - show only their categories
+          // Also include categories where user_id matches OR company_id is null
+          query = query.or(`user_id.eq.${user.id},and(company_id.is.null,user_id.is.null)`);
+        }
+      }
+      // If admin, no filter is applied (shows all categories)
+
+      const { data: dbCategories, error: dbError } = await query
         .order('name', { ascending: true });
 
       if (dbError) {
@@ -61,10 +90,10 @@ export function useCategories(): UseCategoriesReturn {
 
       // Set categories (even if empty array)
       if (dbCategories && dbCategories.length > 0) {
-        console.log(`Loaded ${dbCategories.length} categories for user`);
+        console.log(`Loaded ${dbCategories.length} categories`);
         setCategories(dbCategories);
       } else {
-        console.log('User has 0 categories. They need to create categories or admin must assign templates.');
+        console.log('No categories found');
         setCategories([]);
       }
 

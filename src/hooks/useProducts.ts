@@ -42,24 +42,30 @@ export function useProducts() {
       const supabase = createClient();
 
       // Get the current authenticated user
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-      if (!user) {
+      if (userError || !user) {
+        console.error('User authentication error:', userError);
         setError('User not authenticated');
         setLoading(false);
         return;
       }
 
-      // Get user's company_id from user_profiles
-      const { data: profileData } = await supabase
+      // Try to get user's profile and company_id
+      const { data: profileData, error: profileError } = await supabase
         .from('user_profiles')
-        .select('company_id')
+        .select('company_id, role')
         .eq('user_id', user.id)
         .single();
 
-      const companyId = profileData?.company_id;
+      // Log for debugging
+      console.log('User profile data:', profileData);
+      console.log('Profile error:', profileError);
 
-      // Build query with proper filtering
+      const companyId = profileData?.company_id;
+      const userRole = profileData?.role;
+
+      // Build query
       let query = supabase
         .from('products')
         .select(`
@@ -72,12 +78,20 @@ export function useProducts() {
           )
         `);
 
-      // Filter by company_id if available, otherwise filter by user_id
-      if (companyId) {
-        query = query.eq('company_id', companyId);
-      } else {
-        query = query.eq('user_id', user.id);
+      // Apply filtering based on user context
+      // If user is admin, show all products
+      // Otherwise filter by company_id or user_id
+      if (userRole !== 'admin' && userRole !== 'super_admin') {
+        if (companyId) {
+          // User belongs to a company - show company products
+          query = query.eq('company_id', companyId);
+        } else {
+          // User doesn't have company - show only their products
+          // Also include products where user_id matches OR company_id is null
+          query = query.or(`user_id.eq.${user.id},and(company_id.is.null,user_id.is.null)`);
+        }
       }
+      // If admin, no filter is applied (shows all products)
 
       const { data, error: fetchError } = await query
         .order('category_id', { ascending: true })
@@ -88,6 +102,8 @@ export function useProducts() {
         setError('Nu s-au putut încărca produsele. Verifică conexiunea.');
         return;
       }
+
+      console.log('Fetched products count:', data?.length || 0);
 
       // Transform database records to Product type - MATCH types/index.ts
       const transformedProducts: Product[] = (data || []).map((dbProduct: DbProduct) => {
