@@ -17,27 +17,67 @@ export interface Unit {
 export const unitsService = {
   // Get all available units (system + company specific)
   async getUnits(companyId?: string): Promise<Unit[]> {
+    // Get current user to determine proper filtering
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    // Get user profile to check role and actual company_id
+    const { data: profileData } = await supabase
+      .from('user_profiles')
+      .select('company_id, role')
+      .eq('user_id', user.id)
+      .single();
+
+    const actualCompanyId = profileData?.company_id;
+    const userRole = profileData?.role;
+
     let query = supabase
       .from('units')
       .select('*')
       .eq('is_active', true)
       .order('type, name');
 
-    // Get system-wide units and company-specific units
-    if (companyId) {
-      query = query.or(`company_id.is.null,company_id.eq.${companyId}`);
-    } else {
-      query = query.is('company_id', null);
+    // Apply filtering based on user context
+    // Always include system-wide units (company_id is null)
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
+      if (actualCompanyId) {
+        // User belongs to a company - show system units + company units
+        query = query.or(`company_id.is.null,company_id.eq.${actualCompanyId}`);
+      } else {
+        // User doesn't have company - show only system units
+        query = query.is('company_id', null);
+      }
     }
+    // If admin, no filter is applied (shows all units)
 
     const { data, error } = await query;
-    
+
     if (error) throw error;
     return data || [];
   },
 
   // Get units by type
   async getUnitsByType(type: string, companyId?: string): Promise<Unit[]> {
+    // Get current user to determine proper filtering
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    // Get user profile to check role and actual company_id
+    const { data: profileData } = await supabase
+      .from('user_profiles')
+      .select('company_id, role')
+      .eq('user_id', user.id)
+      .single();
+
+    const actualCompanyId = profileData?.company_id;
+    const userRole = profileData?.role;
+
     let query = supabase
       .from('units')
       .select('*')
@@ -45,14 +85,20 @@ export const unitsService = {
       .eq('is_active', true)
       .order('name');
 
-    if (companyId) {
-      query = query.or(`company_id.is.null,company_id.eq.${companyId}`);
-    } else {
-      query = query.is('company_id', null);
+    // Apply filtering based on user context
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
+      if (actualCompanyId) {
+        // User belongs to a company - show system units + company units
+        query = query.or(`company_id.is.null,company_id.eq.${actualCompanyId}`);
+      } else {
+        // User doesn't have company - show only system units
+        query = query.is('company_id', null);
+      }
     }
+    // If admin, no filter is applied (shows all units)
 
     const { data, error } = await query;
-    
+
     if (error) throw error;
     return data || [];
   },

@@ -61,6 +61,23 @@ export const categoriesService = {
   async getCategories(companyId: string, type?: 'ingredient' | 'recipe' | 'product'): Promise<Category[]> {
     const supabase = createClient();
 
+    // Get current user to determine proper filtering
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    // Get user profile to check role and actual company_id
+    const { data: profileData } = await supabase
+      .from('user_profiles')
+      .select('company_id, role')
+      .eq('user_id', user.id)
+      .single();
+
+    const actualCompanyId = profileData?.company_id;
+    const userRole = profileData?.role;
+
     // Build query to include both company-specific and system-wide (null company_id) categories
     let query = supabase
       .from('categories')
@@ -68,12 +85,17 @@ export const categoriesService = {
       .eq('is_active', true)
       .order('name');
 
-    // Filter by company_id OR null (system-wide categories)
-    if (companyId) {
-      query = query.or(`company_id.eq.${companyId},company_id.is.null`);
-    } else {
-      query = query.is('company_id', null);
+    // Apply filtering based on user context
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
+      if (actualCompanyId) {
+        // User belongs to a company - show company categories + system categories
+        query = query.or(`company_id.eq.${actualCompanyId},company_id.is.null`);
+      } else {
+        // User doesn't have company - show only their categories + system categories
+        query = query.or(`user_id.eq.${user.id},company_id.is.null`);
+      }
     }
+    // If admin, no filter is applied (shows all categories)
 
     if (type) {
       query = query.eq('category_id', type);

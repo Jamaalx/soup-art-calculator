@@ -5,13 +5,44 @@ const supabase = createClient();
 export const ingredientService = {
   // Get all ingredients for a company
   async getIngredients(companyId: string): Promise<Ingredient[]> {
-    const { data, error } = await supabase
+    // Get current user to determine proper filtering
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    // Get user profile to check role and actual company_id
+    const { data: profileData } = await supabase
+      .from('user_profiles')
+      .select('company_id, role')
+      .eq('user_id', user.id)
+      .single();
+
+    const actualCompanyId = profileData?.company_id;
+    const userRole = profileData?.role;
+
+    // Build query with proper filtering
+    let query = supabase
       .from('ingredients')
       .select('*')
-      .eq('company_id', companyId)
       .eq('is_active', true)
       .order('name');
-    
+
+    // Apply filtering based on user context
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
+      if (actualCompanyId) {
+        // User belongs to a company - show company ingredients
+        query = query.eq('company_id', actualCompanyId);
+      } else {
+        // User doesn't have company - show only their ingredients
+        query = query.eq('user_id', user.id);
+      }
+    }
+    // If admin, no filter is applied (shows all ingredients)
+
+    const { data, error } = await query;
+
     if (error) throw error;
     return data || [];
   },
