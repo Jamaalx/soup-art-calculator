@@ -27,6 +27,7 @@ export interface UserProfile {
   phone?: string;
   restaurant_name?: string;
   avatar_url?: string;
+  is_active: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -133,7 +134,8 @@ export const userSettingsService = {
       const profileData: Omit<UserProfile, 'id' | 'created_at' | 'updated_at'> = {
         user_id: userId,
         email: updates.email || '',
-        ...updates
+        ...updates,
+        is_active: updates.is_active ?? true
       };
 
       const { data, error } = await supabase

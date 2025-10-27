@@ -89,7 +89,7 @@ export default function IngredientsPage() {
         name: formData.name,
         category: formData.category,
         brand: formData.brand,
-        unit: formData.unit,
+        unit: formData.unit as 'kg' | 'l' | 'piece' | 'g' | 'ml',
         cost_per_unit: formData.cost_per_unit,
         supplier_id: formData.supplier_id,
         purchase_location: formData.purchase_location,

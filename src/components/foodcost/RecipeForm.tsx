@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Recipe, RecipeIngredient, Ingredient } from '@/types';
-import { useIngredients } from '@/lib/hooks/useRecipes';
+import { useIngredients } from '@/lib/hooks/useIngredients';
 import { useCategories } from '@/lib/hooks/useCategories';
 import { Plus, Minus, Search, Calculator, Clock, Users, DollarSign } from 'lucide-react';
 import PriceCalculator from './PriceCalculator';
@@ -15,8 +15,9 @@ interface RecipeFormProps {
 }
 
 export default function RecipeForm({ recipe, onSave, onCancel, loading = false }: RecipeFormProps) {
-  const { ingredients } = useIngredients();
-  const { categories, loading: categoriesLoading } = useCategories('default-company', 'recipe');
+  const companyId = 'default-company'; // This should come from user context
+  const { ingredients } = useIngredients(companyId);
+  const { categories, loading: categoriesLoading } = useCategories(companyId, 'recipe');
   const [formData, setFormData] = useState({
     name: recipe?.name || '',
     description: recipe?.description || '',
