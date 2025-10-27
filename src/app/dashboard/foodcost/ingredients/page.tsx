@@ -23,11 +23,21 @@ export default function IngredientsPage() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   
   // Form state
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    category: string;
+    brand: string;
+    unit: 'kg' | 'l' | 'piece' | 'g' | 'ml';
+    cost_per_unit: number;
+    supplier_id: string;
+    purchase_location: string;
+    notes: string;
+    priceChangeReason: string;
+  }>({
     name: '',
     category: '',
     brand: '',
-    unit: 'kg' as const,
+    unit: 'kg',
     cost_per_unit: 0,
     supplier_id: '',
     purchase_location: '',
@@ -43,8 +53,8 @@ export default function IngredientsPage() {
     return matchesSearch && matchesCategory;
   });
 
-  // Get unique categories
-  const categories = Array.from(new Set(ingredients.map(ing => ing.category))).filter(Boolean);
+  // Get unique categories from ingredients (for filter dropdown)
+  const uniqueCategories = Array.from(new Set(ingredients.map(ing => ing.category))).filter(Boolean);
 
   const resetForm = () => {
     setFormData({
@@ -126,7 +136,7 @@ export default function IngredientsPage() {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-green-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 font-semibold">{t('loading') || 'Loading ingredients...'}}</p>
+          <p className="text-gray-600 font-semibold">{t('loading') || 'Loading ingredients...'}</p>
         </div>
       </div>
     );
@@ -222,7 +232,7 @@ export default function IngredientsPage() {
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             >
               <option value="all">{t('all-categories') || 'All Categories'}</option>
-              {categories.map(category => (
+              {uniqueCategories.map(category => (
                 <option key={category} value={category}>
                   {category.charAt(0).toUpperCase() + category.slice(1)}
                 </option>
@@ -490,10 +500,10 @@ export default function IngredientsPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         {t('unit') || 'Unit'} *
                       </label>
-                      <select 
+                      <select
                         required
                         value={formData.unit}
-                        onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value as any }))}
+                        onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value as 'kg' | 'l' | 'piece' | 'g' | 'ml' }))}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                         disabled={unitsLoading}
                       >
