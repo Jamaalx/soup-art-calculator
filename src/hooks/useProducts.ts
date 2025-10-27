@@ -41,7 +41,26 @@ export function useProducts() {
 
       const supabase = createClient();
 
-      const { data, error: fetchError } = await supabase
+      // Get the current authenticated user
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        setError('User not authenticated');
+        setLoading(false);
+        return;
+      }
+
+      // Get user's company_id from user_profiles
+      const { data: profileData } = await supabase
+        .from('user_profiles')
+        .select('company_id')
+        .eq('user_id', user.id)
+        .single();
+
+      const companyId = profileData?.company_id;
+
+      // Build query with proper filtering
+      let query = supabase
         .from('products')
         .select(`
           *,
@@ -51,7 +70,16 @@ export function useProducts() {
             icon,
             color
           )
-        `)
+        `);
+
+      // Filter by company_id if available, otherwise filter by user_id
+      if (companyId) {
+        query = query.eq('company_id', companyId);
+      } else {
+        query = query.eq('user_id', user.id);
+      }
+
+      const { data, error: fetchError } = await query
         .order('category_id', { ascending: true })
         .order('nume', { ascending: true });
 
