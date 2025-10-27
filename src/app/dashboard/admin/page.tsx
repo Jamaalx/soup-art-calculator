@@ -1,13 +1,13 @@
 'use client';
 
-import React from 'react';
-import { 
-  Shield, 
-  Users, 
-  Package, 
-  Database, 
-  Settings, 
-  BarChart3, 
+import React, { useEffect, useState } from 'react';
+import {
+  Shield,
+  Users,
+  Package,
+  Database,
+  Settings,
+  BarChart3,
   FileText,
   Building,
   TrendingUp,
@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { createClient } from '@/lib/supabase/client';
 
 const getAdminSections = (t: any) => [
   {
@@ -70,55 +71,100 @@ const getAdminSections = (t: any) => [
   },
 ];
 
-const quickStats = [
-  {
-    label: 'Total Companies',
-    value: '0',
-    icon: Building,
-    change: '+0%',
-    positive: true,
-  },
-  {
-    label: 'Active Users',
-    value: '0',
-    icon: Users,
-    change: '+0%',
-    positive: true,
-  },
-  {
-    label: 'Total Products',
-    value: '0',
-    icon: Package,
-    change: '+0%',
-    positive: true,
-  },
-  {
-    label: 'System Health',
-    value: '100%',
-    icon: TrendingUp,
-    change: 'Optimal',
-    positive: true,
-  },
-];
-
-const recentActivity = [
-  {
-    type: 'system',
-    message: 'Admin panel initialized',
-    time: 'Just now',
-    icon: Shield,
-  },
-  {
-    type: 'info',
-    message: 'System ready for configuration',
-    time: 'Just now',
-    icon: Settings,
-  },
-];
+interface Stats {
+  totalCompanies: number;
+  activeUsers: number;
+  totalProducts: number;
+  totalIngredients: number;
+  systemHealth: string;
+}
 
 export default function AdminDashboard() {
   const { t } = useLanguage();
   const adminSections = getAdminSections(t);
+  const [stats, setStats] = useState<Stats>({
+    totalCompanies: 0,
+    activeUsers: 0,
+    totalProducts: 0,
+    totalIngredients: 0,
+    systemHealth: '100%'
+  });
+  const [loading, setLoading] = useState(true);
+  const supabase = createClient();
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        // Fetch all stats in parallel
+        const [companiesResult, usersResult, productsResult, ingredientsResult] = await Promise.all([
+          supabase.from('companies').select('id', { count: 'exact', head: true }),
+          supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('is_active', true),
+          supabase.from('products').select('id', { count: 'exact', head: true }).eq('is_active', true),
+          supabase.from('ingredients').select('id', { count: 'exact', head: true }).eq('is_active', true)
+        ]);
+
+        setStats({
+          totalCompanies: companiesResult.count || 0,
+          activeUsers: usersResult.count || 0,
+          totalProducts: productsResult.count || 0,
+          totalIngredients: ingredientsResult.count || 0,
+          systemHealth: '100%'
+        });
+      } catch (error) {
+        console.error('Error fetching admin stats:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchStats();
+  }, []);
+
+  const quickStats = [
+    {
+      label: 'Total Companies',
+      value: loading ? '...' : stats.totalCompanies.toString(),
+      icon: Building,
+      change: '+0%',
+      positive: true,
+    },
+    {
+      label: 'Active Users',
+      value: loading ? '...' : stats.activeUsers.toString(),
+      icon: Users,
+      change: '+0%',
+      positive: true,
+    },
+    {
+      label: 'Total Products',
+      value: loading ? '...' : `${stats.totalProducts}`,
+      icon: Package,
+      change: `${stats.totalIngredients} ingredients`,
+      positive: true,
+    },
+    {
+      label: 'System Health',
+      value: stats.systemHealth,
+      icon: TrendingUp,
+      change: 'Optimal',
+      positive: true,
+    },
+  ];
+
+  const recentActivity = [
+    {
+      type: 'system',
+      message: 'Admin panel initialized',
+      time: 'Just now',
+      icon: Shield,
+    },
+    {
+      type: 'info',
+      message: 'System ready for configuration',
+      time: 'Just now',
+      icon: Settings,
+    },
+  ];
 
   return (
     <div className="space-y-8">
