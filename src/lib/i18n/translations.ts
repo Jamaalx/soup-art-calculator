@@ -248,6 +248,29 @@ export const translations = {
     'no-data': 'No data available',
     'add-new': 'Add New',
     'user': 'USER',
+    'try-again': 'Try Again',
+    'products-available': 'products available',
+
+    // Loading & Error States
+    'loading-products': 'Loading products...',
+    'error-loading-products': 'Error Loading Products',
+    'no-products-found': 'No Products Found',
+    'no-products-desc': 'Add products to your database to start using the pricing calculator.',
+    'add-products': 'Add Products',
+
+    // Menu Calculators
+    'restaurant-calculator': 'RESTAURANT CALCULATOR',
+    'online-calculator': 'ONLINE CALCULATOR',
+    'catering-calculator': 'CATERING CALCULATOR',
+    'restaurant-menu-pricing': 'Restaurant Menu Pricing',
+    'online-menu-pricing': 'Online Menu Pricing',
+    'catering-menu-pricing': 'Catering Menu Pricing',
+    'calculate-prices-for-dine-in': 'Calculate prices for dine-in restaurant menu',
+    'calculate-prices-for-delivery': 'Calculate prices for online delivery orders',
+    'calculate-prices-for-catering': 'Calculate prices for catering and events',
+    'fixed-menu': 'Fixed Menu',
+    'menu-variations': 'Menu Variations',
+    'generate-offer': 'Generate Offer',
 
     // User Journey
     'step-1': 'Step 1: Calculate Food Cost',
@@ -485,6 +508,29 @@ export const translations = {
     'no-data': 'Nu există date',
     'add-new': 'Adaugă Nou',
     'user': 'UTILIZATOR',
+    'try-again': 'Încearcă din nou',
+    'products-available': 'produse disponibile',
+
+    // Loading & Error States
+    'loading-products': 'Se încarcă produsele...',
+    'error-loading-products': 'Eroare la Încărcarea Produselor',
+    'no-products-found': 'Nu s-au găsit produse',
+    'no-products-desc': 'Adaugă produse în baza de date pentru a începe să folosești calculatorul de prețuri.',
+    'add-products': 'Adaugă Produse',
+
+    // Menu Calculators
+    'restaurant-calculator': 'CALCULATOR RESTAURANT',
+    'online-calculator': 'CALCULATOR ONLINE',
+    'catering-calculator': 'CALCULATOR CATERING',
+    'restaurant-menu-pricing': 'Stabilire Prețuri Meniu Restaurant',
+    'online-menu-pricing': 'Stabilire Prețuri Meniu Online',
+    'catering-menu-pricing': 'Stabilire Prețuri Meniu Catering',
+    'calculate-prices-for-dine-in': 'Calculează prețuri pentru meniul restaurantului',
+    'calculate-prices-for-delivery': 'Calculează prețuri pentru comenzi online cu livrare',
+    'calculate-prices-for-catering': 'Calculează prețuri pentru catering și evenimente',
+    'fixed-menu': 'Meniu Fix',
+    'menu-variations': 'Variații Meniu',
+    'generate-offer': 'Generează Ofertă',
 
     // User Journey
     'step-1': 'Pasul 1: Calculează Costul Alimentar',

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useProducts } from '@/hooks/useProducts';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 import DashboardProduse from './DashboardProduse';
 import OfferGenerator from './OfferGenerator';
 import { AlertTriangle, RefreshCw, Package, Plus, PartyPopper, BarChart, FileText } from 'lucide-react';
@@ -10,7 +11,8 @@ type ViewMode = 'dashboard' | 'offer';
 
 const MenuCateringCalculator = () => {
   const [activeView, setActiveView] = useState<ViewMode>('dashboard');
-  
+  const { t } = useLanguage();
+
   // Fetch products from Supabase (respects RLS)
   const { products, loading, error } = useProducts();
 
@@ -20,7 +22,7 @@ const MenuCateringCalculator = () => {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 font-semibold">Loading products...</p>
+          <p className="text-gray-600 font-semibold">{t('loading-products')}</p>
         </div>
       </div>
     );
@@ -31,14 +33,14 @@ const MenuCateringCalculator = () => {
     return (
       <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center">
         <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-        <h3 className="text-xl font-black text-red-900 mb-2">Error Loading Products</h3>
+        <h3 className="text-xl font-black text-red-900 mb-2">{t('error-loading-products')}</h3>
         <p className="text-red-700 mb-6">{error}</p>
         <button
           onClick={() => window.location.reload()}
           className="px-6 py-3 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition flex items-center gap-2 mx-auto"
         >
           <RefreshCw className="w-4 h-4" />
-          Try Again
+          {t('try-again')}
         </button>
       </div>
     );
@@ -49,16 +51,16 @@ const MenuCateringCalculator = () => {
     return (
       <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-12 text-center">
         <Package className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-        <h3 className="text-xl font-black text-yellow-900 mb-2">No Products Found</h3>
+        <h3 className="text-xl font-black text-yellow-900 mb-2">{t('no-products-found')}</h3>
         <p className="text-yellow-700 mb-6">
-          Add products to your database to start using the pricing calculator.
+          {t('no-products-desc')}
         </p>
         <a
           href="/dashboard/products"
           className="inline-flex items-center gap-2 px-6 py-3 bg-yellow-600 text-white rounded-lg font-bold hover:bg-yellow-700 transition"
         >
           <Plus className="w-4 h-4" />
-          Add Products
+          {t('add-products')}
         </a>
       </div>
     );
@@ -72,11 +74,11 @@ const MenuCateringCalculator = () => {
           <div>
             <div className="flex items-center gap-3 mb-3">
               <PartyPopper className="w-8 h-8" />
-              <span className="px-3 py-1 bg-white/20 rounded-full text-sm font-bold">CATERING CALCULATOR</span>
+              <span className="px-3 py-1 bg-white/20 rounded-full text-sm font-bold">{t('catering-calculator')}</span>
             </div>
-            <h1 className="text-4xl font-black mb-2">Catering Menu Pricing</h1>
+            <h1 className="text-4xl font-black mb-2">{t('catering-menu-pricing')}</h1>
             <p className="text-orange-100">
-              Calculate prices for catering and events • {products.length} products available
+              {t('calculate-prices-for-catering')} • {products.length} {t('products-available')}
             </p>
           </div>
         </div>
@@ -95,9 +97,9 @@ const MenuCateringCalculator = () => {
               }`}
             >
               <BarChart className="w-5 h-5" />
-              Dashboard
+              {t('dashboard')}
             </button>
-            
+
             <button
               onClick={() => setActiveView('offer')}
               className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 font-bold transition ${
@@ -107,7 +109,7 @@ const MenuCateringCalculator = () => {
               }`}
             >
               <FileText className="w-5 h-5" />
-              Generate Offer
+              {t('generate-offer')}
             </button>
           </div>
         </div>
