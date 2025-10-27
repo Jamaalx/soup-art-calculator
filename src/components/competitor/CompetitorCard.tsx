@@ -75,7 +75,7 @@ export default function CompetitorCard({
     }
   };
 
-  const TypeIcon = getTypeIcon(competitor.type);
+  const TypeIcon = getTypeIcon(competitor.type || 'restaurant');
 
   return (
     <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 hover:shadow-xl transition-all overflow-hidden">
@@ -111,12 +111,12 @@ export default function CompetitorCard({
       <div className="p-4">
         {/* Business Type & Price Range */}
         <div className="flex flex-wrap gap-2 mb-4">
-          <span className={`px-3 py-1 rounded-full text-sm font-bold ${getTypeColor(competitor.type)}`}>
-            {getTypeLabel(competitor.type)}
+          <span className={`px-3 py-1 rounded-full text-sm font-bold ${getTypeColor(competitor.type || 'restaurant')}`}>
+            {getTypeLabel(competitor.type || 'restaurant')}
           </span>
-          <span className={`px-3 py-1 rounded-full text-sm font-bold ${getPriceRangeColor(competitor.price_range)}`}>
+          <span className={`px-3 py-1 rounded-full text-sm font-bold ${getPriceRangeColor(competitor.price_range || 'medium')}`}>
             <Star className="w-3 h-3 inline mr-1" />
-            {getPriceRangeLabel(competitor.price_range)}
+            {getPriceRangeLabel(competitor.price_range || 'medium')}
           </span>
         </div>
 

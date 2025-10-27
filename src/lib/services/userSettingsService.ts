@@ -8,12 +8,15 @@ export interface UserSettings {
   language: string;
   currency: string;
   date_format: string;
-  time_zone: string;
+  time_zone?: string;
   email_notifications: boolean;
-  cost_alerts: boolean;
-  weekly_reports: boolean;
-  order_reminders: boolean;
-  two_factor_enabled: boolean;
+  sms_notifications?: boolean;
+  cost_alerts?: boolean;
+  weekly_reports?: boolean;
+  order_reminders?: boolean;
+  two_factor_enabled?: boolean;
+  number_format?: string;
+  company_id?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -23,10 +26,14 @@ export interface UserProfile {
   user_id: string;
   first_name?: string;
   last_name?: string;
+  full_name?: string | null;
   email: string;
-  phone?: string;
+  phone?: string | null;
+  company_id?: string | null;
   restaurant_name?: string;
-  avatar_url?: string;
+  avatar_url?: string | null;
+  role?: string;
+  preferences?: any;
   is_active: boolean;
   created_at?: string;
   updated_at?: string;

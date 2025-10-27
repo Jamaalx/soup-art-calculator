@@ -72,7 +72,7 @@ export default function IngredientsPage() {
       name: ingredient.name,
       category: ingredient.category,
       brand: ingredient.brand || '',
-      unit: ingredient.unit,
+      unit: ingredient.unit as any,
       cost_per_unit: ingredient.cost_per_unit,
       supplier_id: ingredient.supplier_id || '',
       purchase_location: ingredient.purchase_location || '',
