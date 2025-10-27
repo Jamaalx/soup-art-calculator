@@ -106,10 +106,10 @@ export default function InsightsPage() {
                 <span className="text-red-600 text-xs sm:text-sm font-bold">{t('highest') || 'Highest'}</span>
               </div>
               <h3 className="text-lg sm:text-xl lg:text-2xl font-black text-gray-900 mb-1">
-                {insights?.highestCostRecipe ? `${insights.highestCostRecipe.cost} RON` : '0 RON'}
+                {insights?.mostProfitable ? `${insights.mostProfitable.profit_margin?.toFixed(1)}%` : '0%'}
               </h3>
               <p className="text-gray-600 text-xs sm:text-sm font-medium truncate">
-                {insights?.highestCostRecipe?.name || t('no-data') || 'No Data'}
+                {insights?.mostProfitable?.name || t('no-data') || 'No Data'}
               </p>
             </div>
 
@@ -121,75 +121,15 @@ export default function InsightsPage() {
                 <span className="text-green-600 text-xs sm:text-sm font-bold">{t('lowest') || 'Lowest'}</span>
               </div>
               <h3 className="text-lg sm:text-xl lg:text-2xl font-black text-gray-900 mb-1">
-                {insights?.lowestCostRecipe ? `${insights.lowestCostRecipe.cost} RON` : '0 RON'}
+                {insights?.leastProfitable ? `${insights.leastProfitable.profit_margin?.toFixed(1)}%` : '0%'}
               </h3>
               <p className="text-gray-600 text-xs sm:text-sm font-medium truncate">
-                {insights?.lowestCostRecipe?.name || t('no-data') || 'No Data'}
+                {insights?.leastProfitable?.name || t('no-data') || 'No Data'}
               </p>
             </div>
           </div>
 
-          {/* Cost Analysis */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-            {/* Cost by Category */}
-            <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-4 sm:p-6">
-              <h3 className="text-base sm:text-lg lg:text-xl font-black text-gray-900 mb-4 flex items-center gap-2">
-                <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
-                {t('cost-by-category') || 'Cost by Category'}
-              </h3>
-              {insights?.costByCategory && insights.costByCategory.length > 0 ? (
-                <div className="space-y-3 sm:space-y-4">
-                  {insights.costByCategory.map((category, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 sm:w-4 sm:h-4 rounded" style={{
-                          backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6'][index % 4]
-                        }}></div>
-                        <span className="font-medium text-gray-900 text-sm sm:text-base">{category.category}</span>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-bold text-gray-900 text-sm sm:text-base">{category.cost} RON</div>
-                        <div className="text-xs sm:text-sm text-gray-500">{category.percentage}%</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <AlertCircle className="w-8 h-8 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3" />
-                  <p className="text-gray-500 text-sm sm:text-base">{t('no-category-data') || 'No category data available'}</p>
-                </div>
-              )}
-            </div>
-
-            {/* Most Expensive Ingredients */}
-            <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-4 sm:p-6">
-              <h3 className="text-base sm:text-lg lg:text-xl font-black text-gray-900 mb-4 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
-                {t('most-expensive-ingredients') || 'Most Expensive Ingredients'}
-              </h3>
-              {insights?.topExpensiveIngredients && insights.topExpensiveIngredients.length > 0 ? (
-                <div className="space-y-3 sm:space-y-4">
-                  {insights.topExpensiveIngredients.map((ingredient, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div>
-                        <div className="font-medium text-gray-900 text-sm sm:text-base">{ingredient.name}</div>
-                        <div className="text-xs sm:text-sm text-gray-500">per {ingredient.unit}</div>
-                      </div>
-                      <div className="font-bold text-red-600 text-sm sm:text-base">
-                        {ingredient.costPerUnit} RON
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <AlertCircle className="w-8 h-8 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3" />
-                  <p className="text-gray-500 text-sm sm:text-base">{t('no-ingredient-data') || 'No ingredient data available'}</p>
-                </div>
-              )}
-            </div>
-          </div>
+          {/* Cost Analysis - Future feature: Cost by Category and Most Expensive Ingredients */}
 
           {/* Tips */}
           <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-4 sm:p-6">

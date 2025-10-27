@@ -43,7 +43,7 @@ export default function FoodCostPage() {
   });
 
   // Get unique categories
-  const categories = Array.from(new Set(recipes.map(r => r.category))).filter(Boolean);
+  const categories = Array.from(new Set(recipes.map(r => r.category))).filter((cat): cat is string => Boolean(cat));
 
   const handleCreateRecipe = async (recipeData: Omit<Recipe, 'id' | 'created_at' | 'updated_at'>) => {
     try {
