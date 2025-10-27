@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useProducts } from '@/hooks/useProducts';
-import { useLanguage } from '@/lib/i18n/LanguageContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import DashboardProduse from './DashboardProduse';
 import MeniuFixBuilder from './MenuFixBuilder';
 import MeniuVariatiiBuilder from './MeniuVariatiiBuilder';
