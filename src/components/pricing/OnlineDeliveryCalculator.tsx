@@ -4,23 +4,30 @@ import React, { useState, useEffect } from 'react';
 import { Calculator, Truck, DollarSign, Percent, TrendingUp, Package } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useRecipes } from '@/lib/hooks/useRecipes';
+import { useDeliveryPlatforms } from '@/hooks/useDeliveryPlatforms';
 import { createClient } from '@/lib/supabase/client';
 
 interface PlatformSettings {
+  id: string;
   platform: string;
   commission: number;
   packagingCost: number;
   processingCost: number;
+  color?: string;
 }
 
 export default function OnlineDeliveryCalculator() {
   const { t } = useLanguage();
   const [companyId, setCompanyId] = useState<string | null>(null);
-  const [platformSettings, setPlatformSettings] = useState<PlatformSettings[]>([]);
-  const [loadingSettings, setLoadingSettings] = useState(true);
   const supabase = createClient();
 
-  // Fetch company ID and settings
+  // Use the new delivery platforms hook
+  const { platforms: deliveryPlatforms, loading: loadingPlatforms, error: platformsError } = useDeliveryPlatforms();
+
+  const [platformSettings, setPlatformSettings] = useState<PlatformSettings[]>([]);
+  const [loadingSettings, setLoadingSettings] = useState(true);
+
+  // Fetch company ID
   useEffect(() => {
     async function fetchData() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -34,68 +41,30 @@ export default function OnlineDeliveryCalculator() {
 
       if (profile?.company_id) {
         setCompanyId(profile.company_id);
-        await fetchPlatformSettings(profile.company_id);
       }
     }
 
     fetchData();
   }, []);
 
-  const fetchPlatformSettings = async (compId: string) => {
-    try {
-      setLoadingSettings(true);
+  // Convert delivery platforms to platform settings format
+  useEffect(() => {
+    if (!loadingPlatforms && deliveryPlatforms.length > 0) {
+      const mappedPlatforms: PlatformSettings[] = deliveryPlatforms.map(platform => ({
+        id: platform.id,
+        platform: platform.platform_name,
+        commission: platform.commission_rate,
+        packagingCost: 2.50, // Default values - could be made configurable
+        processingCost: 1.00,
+        color: platform.platform_color
+      }));
 
-      // Fetch calculator settings from database
-      const { data: settings, error } = await supabase
-        .from('calculator_settings')
-        .select('*')
-        .eq('company_id', compId)
-        .eq('setting_category', 'online')
-        .eq('is_active', true);
-
-      if (error) throw error;
-
-      // Map settings to platforms
-      const platforms: PlatformSettings[] = [
-        {
-          platform: 'Glovo',
-          commission: settings?.find(s => s.setting_key === 'glovo_commission')?.value_number || 17,
-          packagingCost: settings?.find(s => s.setting_key === 'online_packaging_cost')?.value_number || 2.50,
-          processingCost: settings?.find(s => s.setting_key === 'online_processing_cost')?.value_number || 1.00
-        },
-        {
-          platform: 'Bolt Food',
-          commission: settings?.find(s => s.setting_key === 'bolt_commission')?.value_number || 15,
-          packagingCost: settings?.find(s => s.setting_key === 'online_packaging_cost')?.value_number || 2.50,
-          processingCost: settings?.find(s => s.setting_key === 'online_processing_cost')?.value_number || 1.00
-        },
-        {
-          platform: 'Wolt',
-          commission: settings?.find(s => s.setting_key === 'wolt_commission')?.value_number || 15,
-          packagingCost: settings?.find(s => s.setting_key === 'online_packaging_cost')?.value_number || 2.50,
-          processingCost: settings?.find(s => s.setting_key === 'online_processing_cost')?.value_number || 1.00
-        },
-        {
-          platform: 'Tazz',
-          commission: settings?.find(s => s.setting_key === 'tazz_commission')?.value_number || 16,
-          packagingCost: settings?.find(s => s.setting_key === 'online_packaging_cost')?.value_number || 2.50,
-          processingCost: settings?.find(s => s.setting_key === 'online_processing_cost')?.value_number || 1.00
-        },
-        {
-          platform: 'Uber Eats',
-          commission: settings?.find(s => s.setting_key === 'uber_commission')?.value_number || 18,
-          packagingCost: settings?.find(s => s.setting_key === 'online_packaging_cost')?.value_number || 2.50,
-          processingCost: settings?.find(s => s.setting_key === 'online_processing_cost')?.value_number || 1.00
-        }
-      ];
-
-      setPlatformSettings(platforms);
-    } catch (err) {
-      console.error('Error fetching platform settings:', err);
-    } finally {
+      setPlatformSettings(mappedPlatforms);
+      setLoadingSettings(false);
+    } else if (!loadingPlatforms) {
       setLoadingSettings(false);
     }
-  };
+  }, [deliveryPlatforms, loadingPlatforms]);
 
   const { recipes, loading: recipesLoading } = useRecipes(companyId || '');
   const [selectedRecipe, setSelectedRecipe] = useState<any | null>(null);
@@ -189,7 +158,25 @@ export default function OnlineDeliveryCalculator() {
               </div>
             )}
 
-            {companyId && !loadingSettings && (
+            {/* Error State */}
+            {platformsError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-red-800 text-sm">
+                  <strong>Error:</strong> {platformsError}
+                </p>
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!loadingSettings && platformSettings.length === 0 && !platformsError && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p className="text-yellow-800 text-sm">
+                  <strong>No platforms configured.</strong> Please contact your administrator to set up delivery platforms.
+                </p>
+              </div>
+            )}
+
+            {companyId && !loadingSettings && platformSettings.length > 0 && (
               <>
                 {/* Recipe Selection */}
                 <div>
@@ -229,15 +216,15 @@ export default function OnlineDeliveryCalculator() {
                     Delivery Platform
                   </label>
                   <select
-                    value={selectedPlatform?.platform || ''}
+                    value={selectedPlatform?.id || ''}
                     onChange={(e) => {
-                      const platform = platformSettings.find(p => p.platform === e.target.value);
+                      const platform = platformSettings.find(p => p.id === e.target.value);
                       setSelectedPlatform(platform || null);
                     }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                   >
                     {platformSettings.map(platform => (
-                      <option key={platform.platform} value={platform.platform}>
+                      <option key={platform.id} value={platform.id}>
                         {platform.platform} ({platform.commission}% commission)
                       </option>
                     ))}
