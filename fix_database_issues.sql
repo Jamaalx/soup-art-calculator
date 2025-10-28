@@ -267,7 +267,7 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS company_name VARCHAR(255);
 
 -- Update company_name from companies table
 UPDATE profiles p
-SET company_name = c.name
+SET company_name = c.company_name
 FROM companies c
 WHERE p.company_id = c.id
   AND (p.company_name IS NULL OR p.company_name = '');
@@ -282,7 +282,7 @@ RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.company_id IS NOT NULL THEN
     NEW.company_name := (
-      SELECT name
+      SELECT company_name
       FROM companies
       WHERE id = NEW.company_id
       LIMIT 1
@@ -358,12 +358,12 @@ WHERE tablename = 'delivery_platforms';
 
 -- 4. Verify delivery platforms were created
 SELECT
-  c.name as company_name,
+  c.company_name,
   COUNT(dp.id) as platforms_count,
   STRING_AGG(dp.platform_name || ' (' || dp.commission_rate || '%)', ', ') as platforms
 FROM companies c
 LEFT JOIN delivery_platforms dp ON c.id = dp.company_id
-GROUP BY c.id, c.name;
+GROUP BY c.id, c.company_name;
 
 -- ============================================================================
 -- SETUP COMPLETE
