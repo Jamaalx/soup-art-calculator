@@ -6,11 +6,11 @@ export interface DeliveryPlatform {
   company_id: string;
   platform_name: string;
   commission_rate: number;
-  is_active: boolean;
-  sort_order: number;
-  platform_color?: string;
-  platform_icon?: string;
-  notes?: string;
+  is_active: boolean | null;
+  sort_order: number | null;
+  platform_color: string | null;
+  platform_icon: string | null;
+  notes: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -40,8 +40,8 @@ class DeliveryPlatformsService {
       .from('delivery_platforms')
       .select('*')
       .eq('company_id', profile.company_id)
-      .eq('is_active', true)
-      .order('sort_order');
+      .or('is_active.eq.true,is_active.is.null')
+      .order('sort_order', { nullsFirst: false });
 
     if (error) {
       console.error('Error fetching delivery platforms:', error);
@@ -72,7 +72,7 @@ class DeliveryPlatformsService {
       .from('delivery_platforms')
       .select('*')
       .eq('company_id', profile.company_id)
-      .order('sort_order');
+      .order('sort_order', { nullsFirst: false });
 
     if (error) throw error;
     return data || [];

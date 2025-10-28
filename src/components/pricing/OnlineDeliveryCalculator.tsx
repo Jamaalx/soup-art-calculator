@@ -50,14 +50,16 @@ export default function OnlineDeliveryCalculator() {
   // Convert delivery platforms to platform settings format
   useEffect(() => {
     if (!loadingPlatforms && deliveryPlatforms.length > 0) {
-      const mappedPlatforms: PlatformSettings[] = deliveryPlatforms.map(platform => ({
-        id: platform.id,
-        platform: platform.platform_name,
-        commission: platform.commission_rate,
-        packagingCost: 2.50, // Default values - could be made configurable
-        processingCost: 1.00,
-        color: platform.platform_color
-      }));
+      const mappedPlatforms: PlatformSettings[] = deliveryPlatforms
+        .filter(platform => platform.is_active !== false) // Include true and null
+        .map(platform => ({
+          id: platform.id,
+          platform: platform.platform_name,
+          commission: platform.commission_rate,
+          packagingCost: 2.50, // Default values - could be made configurable
+          processingCost: 1.00,
+          color: platform.platform_color || undefined
+        }));
 
       setPlatformSettings(mappedPlatforms);
       setLoadingSettings(false);

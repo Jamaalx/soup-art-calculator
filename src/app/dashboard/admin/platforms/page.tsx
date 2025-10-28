@@ -12,7 +12,15 @@ export default function AdminPlatformsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    platform_name: string;
+    commission_rate: number;
+    platform_color: string | null;
+    platform_icon: string | null;
+    notes: string | null;
+    is_active: boolean | null;
+    sort_order: number | null;
+  }>({
     platform_name: '',
     commission_rate: 15,
     platform_color: '#34D186',
@@ -126,8 +134,8 @@ export default function AdminPlatformsPage() {
       platform_color: platform.platform_color || '#34D186',
       platform_icon: platform.platform_icon || '',
       notes: platform.notes || '',
-      is_active: platform.is_active,
-      sort_order: platform.sort_order
+      is_active: platform.is_active ?? true,
+      sort_order: platform.sort_order ?? 0
     });
   };
 
@@ -293,7 +301,7 @@ export default function AdminPlatformsPage() {
             <div
               key={platform.id}
               className={`bg-white rounded-xl shadow-lg border-2 p-6 ${
-                platform.is_active ? 'border-green-200' : 'border-gray-200'
+                platform.is_active !== false ? 'border-green-200' : 'border-gray-200'
               }`}
             >
               {editingId === platform.id ? (
@@ -383,15 +391,15 @@ export default function AdminPlatformsPage() {
                     </div>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => handleToggleActive(platform.id, platform.is_active)}
+                        onClick={() => handleToggleActive(platform.id, platform.is_active ?? true)}
                         className={`p-2 rounded-lg ${
-                          platform.is_active
+                          platform.is_active !== false
                             ? 'bg-green-100 text-green-700 hover:bg-green-200'
                             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                         }`}
-                        title={platform.is_active ? 'Deactivate' : 'Activate'}
+                        title={platform.is_active !== false ? 'Deactivate' : 'Activate'}
                       >
-                        {platform.is_active ? (
+                        {platform.is_active !== false ? (
                           <ToggleRight className="w-5 h-5" />
                         ) : (
                           <ToggleLeft className="w-5 h-5" />
@@ -423,11 +431,11 @@ export default function AdminPlatformsPage() {
                   <div className="flex items-center gap-4 text-sm text-gray-600">
                     <span>Sort Order: {platform.sort_order}</span>
                     <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                      platform.is_active
+                      platform.is_active !== false
                         ? 'bg-green-100 text-green-700'
                         : 'bg-gray-100 text-gray-700'
                     }`}>
-                      {platform.is_active ? 'Active' : 'Inactive'}
+                      {platform.is_active !== false ? 'Active' : 'Inactive'}
                     </span>
                   </div>
                 </div>
