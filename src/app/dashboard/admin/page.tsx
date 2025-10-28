@@ -1,20 +1,21 @@
 'use client';
 
 import React from 'react';
-import { 
-  Shield, 
-  Users, 
-  Package, 
-  Database, 
-  Settings, 
-  BarChart3, 
+import {
+  Shield,
+  Users,
+  Package,
+  Database,
+  Settings,
+  BarChart3,
   FileText,
   Building,
   TrendingUp,
   Calendar,
   AlertTriangle,
   Tags,
-  ChefHat
+  ChefHat,
+  Truck
 } from 'lucide-react';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -50,6 +51,14 @@ const getAdminSections = (t: any) => [
     icon: Building,
     href: '/dashboard/admin/companies',
     gradient: 'from-yellow-600 to-orange-600',
+    status: 'Active',
+  },
+  {
+    title: t('delivery-platforms') || 'Delivery Platforms',
+    description: t('delivery-platforms-desc') || 'Manage delivery platforms and commission rates per company',
+    icon: Truck,
+    href: '/dashboard/admin/platforms',
+    gradient: 'from-blue-500 to-cyan-500',
     status: 'Active',
   },
   {
