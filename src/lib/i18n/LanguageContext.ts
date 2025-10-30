@@ -539,6 +539,13 @@ export const translations = {
     'platform-commission': 'Comision Platformă (%)',
     'packaging-cost': 'Cost Ambalare',
     'suggested-price': 'Preț de Vânzare Sugerat',
+    'selling-channel': 'Canal de Vânzare',
+    'restaurant': 'Restaurant',
+    'delivery': 'Livrare',
+    'price-recommendations': 'Recomandări de Preț',
+    'minimum-price': 'Preț Minim',
+    'margin': 'marjă',
+    'recommended-price': 'Preț Recomandat',
 
     // Admin Panel
     'system-administration': 'Administrare Sistem',

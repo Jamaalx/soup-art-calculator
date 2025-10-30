@@ -56,8 +56,8 @@ export function useCategories(): UseCategoriesReturn {
       console.log('User profile data:', profileData);
       console.log('Profile error:', profileError);
 
-      const companyId = profileData?.company_id;
-      const userRole = profileData?.role;
+      const companyId = profileData && !profileError ? profileData.company_id : null;
+      const userRole = profileData && !profileError ? profileData.role : null;
 
       // Build query
       let query = supabase

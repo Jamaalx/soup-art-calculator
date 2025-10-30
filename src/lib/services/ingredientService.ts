@@ -4,7 +4,7 @@ import { Ingredient, IngredientPriceHistory, IngredientPriceInsights } from '@/t
 const supabase = createClient();
 export const ingredientService = {
   // Get all ingredients for a company
-  async getIngredients(companyId?: string): Promise<Ingredient[]> {
+  async getIngredients(companyId: string): Promise<Ingredient[]> {
     // Get current user to determine proper filtering
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -12,15 +12,15 @@ export const ingredientService = {
       throw new Error('User not authenticated');
     }
 
-    // Get user profile to check role
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
+    // Get user profile to check role and actual company_id
+    const { data: profileData, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('company_id, role')
+      .eq('user_id', user.id)
       .single();
 
-    const userRole = profileData?.role;
-    const isAdmin = userRole === 'admin' || userRole === 'super_admin';
+    const actualCompanyId = profileData && !profileError ? profileData.company_id : null;
+    const userRole = profileData && !profileError ? profileData.role : null;
 
     // Build query with proper filtering
     let query = supabase
@@ -30,30 +30,16 @@ export const ingredientService = {
       .order('name');
 
     // Apply filtering based on user context
-    if (!isAdmin) {
-      // If companyId is provided, use it (assumes caller verified user has access)
-      if (companyId) {
-        query = query.eq('company_id', companyId);
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
+      if (actualCompanyId) {
+        // User belongs to a company - show company ingredients
+        query = query.eq('company_id', actualCompanyId);
       } else {
-        // Get all companies user has access to via user_companies junction table
-        const { data: userCompanies } = await supabase
-          .from('companies')
-          .select('company_id')
-          .eq('user_id', user.id);
-
-        if (userCompanies && userCompanies.length > 0) {
-          const companyIds = userCompanies.map(uc => uc.company_id);
-          query = query.in('company_id', companyIds);
-        } else {
-          // User not assigned to any company - return empty
-          return [];
-        }
+        // User doesn't have company - show only their ingredients
+        query = query.eq('user_id', user.id);
       }
-    } else if (companyId) {
-      // Admin with specific company filter
-      query = query.eq('company_id', companyId);
     }
-    // If admin without company filter, no filter is applied (shows all ingredients)
+    // If admin, no filter is applied (shows all ingredients)
 
     const { data, error } = await query;
 
