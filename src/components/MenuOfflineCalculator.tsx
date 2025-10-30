@@ -2,11 +2,11 @@
 
 import React, { useState } from 'react';
 import { useProducts } from '@/hooks/useProducts';
-import { useLanguage } from '@/lib/i18n/LanguageContext';
 import DashboardProduse from './DashboardProduse';
 import MeniuFixBuilder from './MenuFixBuilder';
 import MeniuVariatiiBuilder from './MeniuVariatiiBuilder';
 import { AlertTriangle, RefreshCw, Package, Plus, Utensils, BarChart, Lock, Palette } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 type ViewMode = 'dashboard' | 'fix' | 'variatii';
 

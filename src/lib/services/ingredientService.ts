@@ -37,7 +37,7 @@ export const ingredientService = {
       } else {
         // Get all companies user has access to via user_companies junction table
         const { data: userCompanies } = await supabase
-          .from('user_companies')
+          .from('companies')
           .select('company_id')
           .eq('user_id', user.id);
 

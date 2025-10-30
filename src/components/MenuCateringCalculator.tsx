@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useProducts } from '@/hooks/useProducts';
-import { useLanguage } from '@/lib/i18n/LanguageContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import DashboardProduse from './DashboardProduse';
 import OfferGenerator from './OfferGenerator';
 import { AlertTriangle, RefreshCw, Package, Plus, PartyPopper, BarChart, FileText } from 'lucide-react';
