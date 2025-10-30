@@ -55,14 +55,14 @@ export default function SettingsPage() {
         language: settings.language,
         currency: settings.currency,
         date_format: settings.date_format,
-        time_zone: settings.time_zone
+        time_zone: settings.time_zone ?? 'Europe/Bucharest'
       });
-      
+
       setNotificationSettings({
         email_notifications: settings.email_notifications,
-        cost_alerts: settings.cost_alerts,
-        weekly_reports: settings.weekly_reports,
-        order_reminders: settings.order_reminders
+        cost_alerts: settings.cost_alerts ?? true,
+        weekly_reports: settings.weekly_reports ?? false,
+        order_reminders: settings.order_reminders ?? true
       });
     }
   }, [settings]);

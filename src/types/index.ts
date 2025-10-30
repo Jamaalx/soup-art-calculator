@@ -116,7 +116,7 @@ export interface Ingredient {
   brand?: string | null;
   purchase_location?: string | null;
   notes?: string | null;
-  is_active: boolean;
+  is_active: boolean | null;
   company_id: string;
   created_at?: string;
   updated_at?: string;

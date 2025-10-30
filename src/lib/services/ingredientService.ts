@@ -13,14 +13,14 @@ export const ingredientService = {
     }
 
     // Get user profile to check role and actual company_id
-    const { data: profileData } = await supabase
+    const { data: profileData, error: profileError } = await supabase
       .from('user_profiles')
       .select('company_id, role')
       .eq('user_id', user.id)
       .single();
 
-    const actualCompanyId = profileData?.company_id;
-    const userRole = profileData?.role;
+    const actualCompanyId = profileData && !profileError ? profileData.company_id : null;
+    const userRole = profileData && !profileError ? profileData.role : null;
 
     // Build query with proper filtering
     let query = supabase
